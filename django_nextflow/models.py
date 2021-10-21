@@ -19,7 +19,7 @@ class Execution(models.Model):
     stderr = models.TextField()
     exit_code = models.IntegerField()
     command = models.TextField()
-    pipeline = models.ForeignKey(Pipeline, related_name="executions")
+    pipeline = models.ForeignKey(Pipeline, related_name="executions", on_delete=models.CASCADE)
 
     def __str__(self):
         return self.identifier
@@ -33,7 +33,7 @@ class ProcessExecution(models.Model):
     identifier = models.CharField(max_length=200)
     stdout = models.TextField()
     stderr = models.TextField()
-    execution = models.ForeignKey(Execution, related_name="process_executions")
+    execution = models.ForeignKey(Execution, related_name="process_executions", on_delete=models.CASCADE)
 
     def __str__(self):
         return self.name
@@ -44,7 +44,7 @@ class Data:
 
     filename = models.CharField(max_length=200)
     size = models.IntegerField()
-    process_execution = models.ForeignKey(ProcessExecution, related_name="data")
+    process_execution = models.ForeignKey(ProcessExecution, related_name="data", on_delete=models.CASCADE)
 
     def __str__(self):
         return self.filename
