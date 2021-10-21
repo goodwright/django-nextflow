@@ -23,3 +23,17 @@ class Execution(models.Model):
 
     def __str__(self):
         return self.identifier
+
+
+
+class ProcessExecution(models.Model):
+
+    name = models.CharField(max_length=200)
+    process_name = models.CharField(max_length=200)
+    identifier = models.CharField(max_length=200)
+    stdout = models.TextField()
+    stderr = models.TextField()
+    execution = models.ForeignKey(Execution, related_name="process_executions")
+
+    def __str__(self):
+        return self.name
