@@ -37,3 +37,14 @@ class ProcessExecution(models.Model):
 
     def __str__(self):
         return self.name
+
+
+
+class Data:
+
+    filename = models.CharField(max_length=200)
+    size = models.IntegerField()
+    process_execution = models.ForeignKey(ProcessExecution, related_name="data")
+
+    def __str__(self):
+        return self.filename
