@@ -9,3 +9,17 @@ class Pipeline(models.Model):
 
     def __str__(self):
         return self.name
+
+
+
+class Execution(models.Model):
+
+    identifier = models.CharField(max_length=100)
+    stdout = models.TextField()
+    stderr = models.TextField()
+    exit_code = models.IntegerField()
+    command = models.TextField()
+    pipeline = models.ForeignKey(Pipeline, related_name="executions")
+
+    def __str__(self):
+        return self.identifier
