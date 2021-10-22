@@ -1,4 +1,6 @@
+import os
 from django.db import models
+from django.conf import settings
 
 class Pipeline(models.Model):
 
@@ -40,11 +42,22 @@ class ProcessExecution(models.Model):
 
 
 
-class Data:
+class Data(models.Model):
 
     filename = models.CharField(max_length=200)
+    path = models.CharField(max_length=200)
     size = models.IntegerField()
     process_execution = models.ForeignKey(ProcessExecution, related_name="data", on_delete=models.CASCADE)
 
     def __str__(self):
         return self.filename
+    
+    @property
+    def full_path(self):
+        """Gets the data's full path on the filesystem."""
+        
+        if hasattr(settings, "NEXTFLOW_DATA_ROOT"):
+            path = self.path[1:] if self.path[0] == os.path.sep else self.path
+            return os.path.join(settings.NEXTFLOW_DATA_ROOT, path, self.filename)
+        else:
+            return os.path.join(self.path, self.filename)
