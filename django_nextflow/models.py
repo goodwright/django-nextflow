@@ -33,6 +33,7 @@ class ProcessExecution(models.Model):
     name = models.CharField(max_length=200)
     process_name = models.CharField(max_length=200)
     identifier = models.CharField(max_length=200)
+    status = models.CharField(max_length=20)
     stdout = models.TextField()
     stderr = models.TextField()
     execution = models.ForeignKey(Execution, related_name="process_executions", on_delete=models.CASCADE)
@@ -55,7 +56,7 @@ class Data(models.Model):
     @property
     def full_path(self):
         """Gets the data's full path on the filesystem."""
-        
+
         if hasattr(settings, "NEXTFLOW_DATA_ROOT"):
             path = self.path[1:] if self.path[0] == os.path.sep else self.path
             return os.path.join(settings.NEXTFLOW_DATA_ROOT, path, self.filename)

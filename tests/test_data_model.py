@@ -1,5 +1,4 @@
 import os
-
 from django.test.utils import override_settings
 from mixer.backend.django import mixer
 from django.test import TestCase
