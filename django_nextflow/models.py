@@ -1,4 +1,5 @@
 import os
+import nextflow
 from django.db import models
 from django.conf import settings
 
@@ -20,11 +21,33 @@ class Execution(models.Model):
     stdout = models.TextField()
     stderr = models.TextField()
     exit_code = models.IntegerField()
+    status = models.CharField(max_length=20)
     command = models.TextField()
+    started = models.FloatField()
+    duration = models.FloatField()
     pipeline = models.ForeignKey(Pipeline, related_name="executions", on_delete=models.CASCADE)
+        
 
     def __str__(self):
         return self.identifier
+    
+
+    @property
+    def finished(self):
+        """The timestamp for when the execution stopped."""
+        
+        return self.started + self.duration
+    
+
+    def get_log_text(self):
+        """Gets the text of the execution's nextflow log file. This requires a
+        disk read, so is its own method."""
+
+        execution = nextflow.Execution(
+            location=os.path.join(settings.NEXTFLOW_DATA_ROOT, str(self.id)),
+            id=self.identifier
+        )
+        return execution.log
 
 
 
