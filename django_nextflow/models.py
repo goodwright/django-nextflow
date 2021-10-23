@@ -12,6 +12,17 @@ class Pipeline(models.Model):
 
     def __str__(self):
         return self.name
+    
+    def run(self, basic_params=None, data_params=None):
+        pipeline = nextflow.Pipeline(
+            path=os.path.join(settings.NEXTFLOW_PIPELINE_ROOT, self.path),
+            config=os.path.join(settings.NEXTFLOW_PIPELINE_ROOT, self.config_path),
+        )
+        params = {**(basic_params if basic_params else {})}
+        execution = pipeline.run(
+            location=os.path.join(settings.NEXTFLOW_DATA_ROOT, "x"),
+            params=params
+        )
 
 
 
@@ -35,7 +46,7 @@ class Execution(models.Model):
     @property
     def finished(self):
         """The timestamp for when the execution stopped."""
-        
+
         return self.started + self.duration
     
 
