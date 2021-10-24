@@ -1,5 +1,7 @@
 #!/usr/bin/env nextflow
 
+params.worldname = "world"
+
 cheers = Channel.from 'Bonjour', 'Ciao', 'Hello', 'Hola'
 
 process sayHello {
@@ -8,6 +10,6 @@ process sayHello {
     val x from cheers
   script:
     """
-    echo '$x world!'
+    echo '$x $params.worldname!'
     """
 }

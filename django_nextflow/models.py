@@ -16,7 +16,7 @@ class Pipeline(models.Model):
     def __str__(self):
         return self.name
     
-    def run(self, basic_params=None, data_params=None):
+    def run(self, params=None, data_params=None):
         pipeline = nextflow.Pipeline(
             path=os.path.join(settings.NEXTFLOW_PIPELINE_ROOT, self.path),
             config=os.path.join(settings.NEXTFLOW_PIPELINE_ROOT, self.config_path) if self.config_path else None,
@@ -26,7 +26,7 @@ class Pipeline(models.Model):
 
         os.mkdir(os.path.join(settings.NEXTFLOW_DATA_ROOT, str(id)))
 
-        params = {**(basic_params if basic_params else {})}
+        params = {**(params if params else {})}
         execution = pipeline.run(
             location=os.path.join(settings.NEXTFLOW_DATA_ROOT, str(id)),
             params=params
