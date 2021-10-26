@@ -27,6 +27,16 @@ class Pipeline(models.Model):
         os.mkdir(os.path.join(settings.NEXTFLOW_DATA_ROOT, str(id)))
 
         params = {**(params if params else {})}
+        if data_params:
+            for name, data_id in data_params.items():
+                data = Data.objects.get(id=data_id)
+                path = os.path.abspath(os.path.join(
+                    settings.NEXTFLOW_DATA_ROOT,
+                    str(data.process_execution.execution.id),
+                    settings.NEXTFLOW_PUBLISH_DIR,
+                    data.filename
+                ))
+                params[name] = path
         execution = pipeline.run(
             location=os.path.join(settings.NEXTFLOW_DATA_ROOT, str(id)),
             params=params
@@ -66,13 +76,15 @@ class Pipeline(models.Model):
                 PUBLISH_DIR,
                 process_execution.name
             )
-            for filename in os.listdir(location):
-                Data.objects.create(
-                    filename=filename,
-                    path=location,
-                    size=os.path.getsize(os.path.join(location, filename)),
-                    process_execution=process_execution_model
-                )
+            try:
+                for filename in os.listdir(location):
+                    Data.objects.create(
+                        filename=filename,
+                        path=location,
+                        size=os.path.getsize(os.path.join(location, filename)),
+                        process_execution=process_execution_model
+                    )
+            except FileNotFoundError: pass
 
         return execution_model
 

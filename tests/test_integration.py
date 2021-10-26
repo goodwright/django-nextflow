@@ -3,7 +3,7 @@ import shutil
 import time
 from django.test import TestCase
 from django.test.utils import override_settings
-from django_nextflow.models import Pipeline
+from django_nextflow.models import Pipeline, Execution, Data, ProcessExecution
 
 class IntegrationTest(TestCase):
 
@@ -109,6 +109,78 @@ class Test(IntegrationTest):
             self.assertEqual(process_execution.status, "COMPLETED")
             self.assertIn(process_execution.stdout, [
                 "Hello Earth!\n", "Bonjour Earth!\n", "Ciao Earth!\n", "Hola Earth!\n"
+            ])
+            self.assertEqual(len(process_execution.identifier), 9)
+            self.assertEqual(process_execution.data.count(), 0)
+    
+
+    @override_settings(NEXTFLOW_PIPELINE_ROOT=os.path.join("tests", "pipelines"))
+    @override_settings(NEXTFLOW_DATA_ROOT=os.path.join("tests", "data"))
+    @override_settings(NEXTFLOW_PUBLISH_DIR=os.path.join("results"))
+    def test_basic_pipeline_with_data_inputs(self):
+        # Create data object
+        pipeline = Pipeline.objects.create(
+            name="Hello World 0",
+            path=os.path.join("data-input", "main.nf"),
+        )
+        execution = Execution.objects.create(
+            id=50,
+            pipeline=pipeline,
+            exit_code=0,
+            started=100, duration=20
+        )
+        process_execution = ProcessExecution.objects.create(
+            execution=execution
+        )
+        Data.objects.create(
+            id=200,
+            size=100,
+            filename="test-file.txt",
+            process_execution=process_execution
+        )
+        os.mkdir(os.path.join("tests", "data", "50"))
+        os.mkdir(os.path.join("tests", "data", "50", "results"))
+        with open(os.path.join("tests", "data", "50", "results", "test-file.txt"), "w") as f:
+            f.write("content")
+
+        # Create pipeline
+        pipeline = Pipeline.objects.create(
+            name="Hello World",
+            path=os.path.join("data-input", "main.nf"),
+        )
+
+        # Run pipeline
+        execution = pipeline.run(params={"worldname": "Earth"}, data_params={"filename": 200})
+
+        # Execution is fine
+        self.assertIn(str(execution.id), os.listdir(self.data_dir))
+        self.assertEqual(execution.pipeline, pipeline)
+        self.assertIn("_", execution.identifier)
+        self.assertIn("N E X T F L O W", execution.stdout)
+        self.assertFalse(execution.stderr)
+        self.assertEqual(execution.exit_code, 0)
+        self.assertEqual(
+            execution.command,
+            f"nextflow run {os.path.abspath(os.path.join('tests', 'pipelines', pipeline.path))}"
+            f" --worldname=Earth --filename={os.path.abspath(os.path.join('tests', 'data', '50', 'results', 'test-file.txt'))}\n"
+        )
+
+        # Execution log
+        log_text = execution.get_log_text()
+        self.assertIn("N E X T F L O W", log_text)
+        self.assertIn(f"[{execution.identifier}]", log_text)
+        self.assertIn(f"DEBUG", log_text)
+
+        # Execution processes
+        self.assertEqual(execution.process_executions.count(), 4)
+        for process_execution in execution.process_executions.all():
+            self.assertEqual(process_execution.execution, execution)
+            self.assertTrue(process_execution.name.startswith("sayHello ("))
+            self.assertEqual(process_execution.process_name, "sayHello")
+            self.assertEqual(process_execution.status, "COMPLETED")
+            self.assertIn(process_execution.stdout, [
+                "contentHello Earth!\n", "contentBonjour Earth!\n",
+                "contentCiao Earth!\n", "contentHola Earth!\n"
             ])
             self.assertEqual(len(process_execution.identifier), 9)
             self.assertEqual(process_execution.data.count(), 0)
