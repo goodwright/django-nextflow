@@ -15,13 +15,3 @@ class PipelineCreationTests(TestCase):
         )
         self.assertEqual(str(pipeline), "Run analysis")
         self.assertEqual(list(pipeline.executions.all()), [])
-
-
-
-class RunTests(TestCase):
-
-    @override_settings(NEXTFLOW_PIPELINE_ROOT="/home/nf")
-    @override_settings(NEXTFLOW_DATA_ROOT="/home/data")
-    def test_can_run(self):
-        pipeline = mixer.blend(Pipeline, path="main.nf", config_path="conf/nextflow.config")
-        execution = pipeline.run()

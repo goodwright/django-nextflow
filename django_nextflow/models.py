@@ -46,7 +46,7 @@ class Pipeline(models.Model):
         )
 
         for process_execution in execution.process_executions:
-            ProcessExecution.objects.create(
+            process_execution_model = ProcessExecution.objects.create(
                 name=process_execution.name,
                 process_name=process_execution.process,
                 identifier=process_execution.hash,
@@ -55,6 +55,24 @@ class Pipeline(models.Model):
                 stderr=process_execution.stderr,
                 execution=execution_model
             )
+
+            try:
+                PUBLISH_DIR = settings.NEXTFLOW_PUBLISH_DIR
+            except AttributeError: continue
+            
+            location = os.path.join(
+                settings.NEXTFLOW_DATA_ROOT,
+                str(execution_model.id),
+                PUBLISH_DIR,
+                process_execution.name
+            )
+            for filename in os.listdir(location):
+                Data.objects.create(
+                    filename=filename,
+                    path=location,
+                    size=os.path.getsize(os.path.join(location, filename)),
+                    process_execution=process_execution_model
+                )
 
         return execution_model
 

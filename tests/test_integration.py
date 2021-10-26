@@ -112,4 +112,58 @@ class Test(IntegrationTest):
             ])
             self.assertEqual(len(process_execution.identifier), 9)
             self.assertEqual(process_execution.data.count(), 0)
+    
 
+    @override_settings(NEXTFLOW_PIPELINE_ROOT=os.path.join("tests", "pipelines"))
+    @override_settings(NEXTFLOW_DATA_ROOT=os.path.join("tests", "data"))
+    @override_settings(NEXTFLOW_PUBLISH_DIR=os.path.join("results"))
+    def test_pipeline_with_data_outputs(self):
+        # Create pipeline
+        pipeline = Pipeline.objects.create(
+            name="Hello World",
+            path=os.path.join("data-hello-world", "main.nf"),
+            config_path=os.path.join("data-hello-world", "nextflow.config"),
+        )
+
+        # Run pipeline
+        start = time.time()
+        execution = pipeline.run()
+
+        # Execution is fine
+        self.assertIn(str(execution.id), os.listdir(self.data_dir))
+        self.assertEqual(execution.pipeline, pipeline)
+        self.assertIn("_", execution.identifier)
+        self.assertIn("N E X T F L O W", execution.stdout)
+        self.assertFalse(execution.stderr)
+        self.assertEqual(execution.exit_code, 0)
+        self.assertEqual(
+            execution.command,
+            f"nextflow -C {os.path.abspath(os.path.join('tests', 'pipelines', pipeline.config_path))} run {os.path.abspath(os.path.join('tests', 'pipelines', pipeline.path))}\n"
+        )
+        self.assertLess(abs(execution.started - start), 5)
+        self.assertLess(
+            abs(execution.finished - (execution.started + execution.duration)), 2
+        )
+
+        # Execution log
+        log_text = execution.get_log_text()
+        self.assertIn("N E X T F L O W", log_text)
+        self.assertIn(f"[{execution.identifier}]", log_text)
+        self.assertIn(f"DEBUG", log_text)
+
+        # Execution processes
+        self.assertEqual(execution.process_executions.count(), 4)
+        for process_execution in execution.process_executions.all():
+            self.assertEqual(process_execution.execution, execution)
+            self.assertTrue(process_execution.name.startswith("sayHello ("))
+            self.assertEqual(process_execution.process_name, "sayHello")
+            self.assertEqual(process_execution.status, "COMPLETED")
+            self.assertEqual(process_execution.stdout, "-")
+            self.assertEqual(len(process_execution.identifier), 9)
+
+            # Data objects
+            self.assertEqual(process_execution.data.count(), 2)
+            for data in process_execution.data.all():
+                self.assertIn(data.filename, ["message.txt", "output.txt"])
+                self.assertIn(data.size, [7, 12, 13, 15])
+                self.assertEqual(data.process_execution, process_execution)
