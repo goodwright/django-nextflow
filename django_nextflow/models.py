@@ -184,6 +184,18 @@ class Data(models.Model):
         return data
     
 
+    @staticmethod
+    def create_from_upload(upload):
+        data = Data.objects.create(filename=upload.name, size=upload.size)
+        os.mkdir(os.path.join(settings.NEXTFLOW_UPLOADS_ROOT, str(data.id)))
+        with open(os.path.join(
+            settings.NEXTFLOW_UPLOADS_ROOT, str(data.id), upload.name
+        ), "wb+") as destination:
+            for chunk in upload.chunks():
+                destination.write(chunk)
+        return data
+    
+
     @property
     def full_path(self):
         """Gets the data's full path on the filesystem."""

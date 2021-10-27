@@ -1,10 +1,6 @@
 nextflow.enable.dsl=2
 
 process PDB_TO_MMCIF {
-    publishDir "${params.outdir}",
-        mode: params.publish_dir_mode,
-        saveAs: { filename -> filename }
-
     publishDir "results", saveAs: { filename -> task.name + '/' + filename }
 
     input:
