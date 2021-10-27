@@ -23,6 +23,7 @@ class Test(IntegrationTest):
 
     @override_settings(NEXTFLOW_PIPELINE_ROOT=os.path.join("tests", "pipelines"))
     @override_settings(NEXTFLOW_DATA_ROOT=os.path.join("tests", "data"))
+    @override_settings(NEXTFLOW_PUBLISH_DIR=os.path.join("results"))
     def test_basic_pipeline(self):
         # Create pipeline
         pipeline = Pipeline.objects.create(
@@ -72,6 +73,7 @@ class Test(IntegrationTest):
 
     @override_settings(NEXTFLOW_PIPELINE_ROOT=os.path.join("tests", "pipelines"))
     @override_settings(NEXTFLOW_DATA_ROOT=os.path.join("tests", "data"))
+    @override_settings(NEXTFLOW_PUBLISH_DIR=os.path.join("results"))
     def test_basic_pipeline_with_inputs(self):
         # Create pipeline
         pipeline = Pipeline.objects.create(
@@ -120,7 +122,7 @@ class Test(IntegrationTest):
     def test_basic_pipeline_with_data_inputs(self):
         # Create data object
         pipeline = Pipeline.objects.create(
-            name="Hello World 0",
+            name="Hello World (0)",
             path=os.path.join("data-input", "main.nf"),
         )
         execution = Execution.objects.create(
@@ -130,7 +132,8 @@ class Test(IntegrationTest):
             started=100, duration=20
         )
         process_execution = ProcessExecution.objects.create(
-            execution=execution
+            execution=execution,
+            name="Hello World (0)"
         )
         Data.objects.create(
             id=200,
@@ -140,7 +143,8 @@ class Test(IntegrationTest):
         )
         os.mkdir(os.path.join("tests", "data", "50"))
         os.mkdir(os.path.join("tests", "data", "50", "results"))
-        with open(os.path.join("tests", "data", "50", "results", "test-file.txt"), "w") as f:
+        os.mkdir(os.path.join("tests", "data", "50", "results", "Hello World (0)"))
+        with open(os.path.join("tests", "data", "50", "results", "Hello World (0)", "test-file.txt"), "w") as f:
             f.write("content")
 
         # Create pipeline
@@ -162,7 +166,7 @@ class Test(IntegrationTest):
         self.assertEqual(
             execution.command,
             f"nextflow run {os.path.abspath(os.path.join('tests', 'pipelines', pipeline.path))}"
-            f" --worldname=Earth --filename={os.path.abspath(os.path.join('tests', 'data', '50', 'results', 'test-file.txt'))}\n"
+            f" --worldname=Earth '--filename={os.path.abspath(os.path.join('tests', 'data', '50', 'results', 'Hello World (0)', 'test-file.txt'))}'\n"
         )
 
         # Execution log

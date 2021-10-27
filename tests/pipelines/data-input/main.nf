@@ -11,7 +11,7 @@ process sayHello {
     val x from cheers
   script:
     """
-    echo | cat $params.filename
+    echo | cat "$params.filename"
     echo '$x $params.worldname!'
     """
 }
