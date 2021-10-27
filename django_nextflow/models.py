@@ -156,7 +156,6 @@ class ProcessExecution(models.Model):
             for filename in os.listdir(location):
                 Data.objects.create(
                     filename=filename,
-                    path=location,
                     size=os.path.getsize(os.path.join(location, filename)),
                     process_execution=self
                 )

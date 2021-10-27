@@ -1,14 +1,17 @@
 import os
+import time
 import shutil
 from django.test import TestCase
 from django.test.utils import override_settings
-from django_nextflow.models import Data
+from django_nextflow.models import Data, Pipeline
 
 class PdbToMmcifTests(TestCase):
 
     def setUp(self):
         self.data_dir = os.path.join("tests", "data")
         self.upload_dir = os.path.join("tests", "uploads")
+        self.pipe_dir = os.path.join("tests", "pipelines")
+        self.files_dir = os.path.join("tests", "files")
         if os.path.exists(self.data_dir): shutil.rmtree(self.data_dir)
         if os.path.exists(self.upload_dir): shutil.rmtree(self.upload_dir)
         os.mkdir(self.data_dir)
@@ -21,7 +24,7 @@ class PdbToMmcifTests(TestCase):
 
 
     def files_path(self, path):
-        return os.path.join("tests", "files", path)
+        return os.path.join(self.files_dir, path)
 
 
     @override_settings(NEXTFLOW_PIPELINE_ROOT=os.path.join("tests", "pipelines"))
@@ -39,3 +42,50 @@ class PdbToMmcifTests(TestCase):
             os.path.abspath(os.path.join(self.upload_dir, str(pdb_data.id), "1lol.pdb"))
         )
         self.assertTrue(os.path.exists(pdb_data.full_path))
+
+        # Create and run pipeline object
+        pipeline = Pipeline.objects.create(
+            name="Convert to mmCIF",
+            path=os.path.join("subworkflows", "pdb2mmcif.nf")
+        )
+        start = time.time()
+        execution = pipeline.run(data_params={"pdb": pdb_data.id})
+
+        # Execution is fine
+        self.assertIn(str(execution.id), os.listdir(self.data_dir))
+        self.assertEqual(execution.pipeline, pipeline)
+        self.assertIn("_", execution.identifier)
+        self.assertIn("N E X T F L O W", execution.stdout)
+        self.assertFalse(execution.stderr)
+        self.assertEqual(execution.exit_code, 0)
+        command = "nextflow run " +\
+            os.path.abspath(os.path.join(self.pipe_dir,  pipeline.path)) +\
+            " --pdb=" +\
+            os.path.abspath(os.path.join(self.upload_dir, str(pdb_data.id), "1lol.pdb\n"))
+            
+        self.assertEqual(execution.command, command)
+        self.assertLess(abs(execution.started - start), 2)
+        self.assertLess(
+            abs(execution.finished - (execution.started + execution.duration)), 2
+        )
+
+        # Process execution is fine
+        self.assertEqual(execution.process_executions.count(), 1)
+        process_execution = execution.process_executions.first()
+        self.assertEqual(process_execution.execution, execution)
+        self.assertEqual(process_execution.name, "PDB_TO_MMCIF")
+        self.assertEqual(process_execution.process_name, "PDB_TO_MMCIF")
+        self.assertEqual(process_execution.status, "COMPLETED")
+        self.assertEqual(
+            process_execution.stdout,
+            "CRYSTAL STRUCTURE OF OROTIDINE MONOPHOSPHATE DECARBOXYLASE COMPLEX WITH XMP\n"
+        )
+        self.assertEqual(len(process_execution.identifier), 9)
+
+        # Data output is fine
+        self.assertEqual(process_execution.data.count(), 1)
+        data = process_execution.data.first()
+        self.assertEqual(data.filename, "1lol.cif")
+        self.assertGreater(data.size, 200_000)
+        self.assertEqual(data.process_execution, process_execution)
+        self.assertTrue(os.path.exists(data.full_path))
