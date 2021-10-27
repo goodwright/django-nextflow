@@ -1,5 +1,5 @@
 import os
-from django_nextflow.utils import parse_datetime, parse_duration
+import shutil
 import nextflow
 from random import randint
 from django.db import models
@@ -167,21 +167,36 @@ class ProcessExecution(models.Model):
 class Data(models.Model):
 
     filename = models.CharField(max_length=200)
-    path = models.CharField(max_length=200)
     size = models.IntegerField()
-    process_execution = models.ForeignKey(ProcessExecution, related_name="data", on_delete=models.CASCADE)
+    process_execution = models.ForeignKey(ProcessExecution, null=True, related_name="data", on_delete=models.CASCADE)
 
     def __str__(self):
         return self.filename
     
+
+    @staticmethod
+    def create_from_path(path):
+        filename = path.split(os.path.sep)[-1]
+        data = Data.objects.create(filename=filename, size=os.path.getsize(path))
+        os.mkdir(os.path.join(settings.NEXTFLOW_UPLOADS_ROOT, str(data.id)))
+        shutil.copy(path, os.path.join(
+            settings.NEXTFLOW_UPLOADS_ROOT, str(data.id), filename
+        ))
+        return data
+    
+
     @property
     def full_path(self):
         """Gets the data's full path on the filesystem."""
 
-        return os.path.abspath(os.path.join(
-            settings.NEXTFLOW_DATA_ROOT,
-            str(self.process_execution.execution.id),
-            settings.NEXTFLOW_PUBLISH_DIR,
-            self.process_execution.name,
-            self.filename
-        ))
+        if self.process_execution:
+            location = os.path.join(
+                settings.NEXTFLOW_DATA_ROOT,
+                str(self.process_execution.execution.id),
+                settings.NEXTFLOW_PUBLISH_DIR, self.process_execution.name,
+            )
+        else:
+            location = os.path.join(
+                settings.NEXTFLOW_UPLOADS_ROOT, str(self.id),
+            )
+        return os.path.abspath(os.path.join(location, self.filename))
