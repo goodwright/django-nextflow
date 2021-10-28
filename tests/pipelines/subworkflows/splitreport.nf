@@ -9,3 +9,13 @@ workflow {
     ch_chains = MMCIF_TO_CHAINS(params.mmcif).cif.flatMap()
     MMCIF_REPORT( ch_chains )
 }
+
+workflow SPLIT_REPORT {
+
+    take:
+    mmcif
+
+    main:
+    ch_chains = MMCIF_TO_CHAINS(mmcif).cif.flatMap()
+    MMCIF_REPORT( ch_chains )
+}

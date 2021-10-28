@@ -4,7 +4,7 @@ import shutil
 from django.test import TestCase
 from django.test.utils import override_settings
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django_nextflow.models import Data, Pipeline
+from django_nextflow.models import Data, Pipeline, ProcessExecution
 
 @override_settings(NEXTFLOW_PIPELINE_ROOT=os.path.join("tests", "pipelines"))
 @override_settings(NEXTFLOW_DATA_ROOT=os.path.join("tests", "data"))
@@ -388,3 +388,76 @@ class SplitAndReportTests(PipelineTest):
         self.assertGreater(data.size, 20)
         self.assertEqual(data.process_execution, process_execution)
         self.assertTrue(os.path.exists(data.full_path))
+
+
+
+class FullWorkflowTests(PipelineTest):
+
+    def test_basic_pipeline(self):
+        # Upload PDB file
+        pdb_data = Data.create_from_path(self.files_path("1lol.pdb"))
+        self.assertEqual(pdb_data.filename, "1lol.pdb")
+        self.assertEqual(pdb_data.size, 322623)
+        self.assertIsNone(pdb_data.process_execution)
+        self.assertEqual(
+            pdb_data.full_path,
+            os.path.abspath(os.path.join(self.upload_dir, str(pdb_data.id), "1lol.pdb"))
+        )
+        self.assertTrue(os.path.exists(pdb_data.full_path))
+
+        # Create and run pipeline object
+        pipeline = Pipeline.objects.create(
+            name="Analyse PDB",
+            path=os.path.join("main.nf")
+        )
+        start = time.time()
+        execution = pipeline.run(data_params={"pdb": pdb_data.id})
+
+        # Execution is fine
+        self.assertIn(str(execution.id), os.listdir(self.data_dir))
+        self.assertEqual(execution.pipeline, pipeline)
+        self.assertIn("_", execution.identifier)
+        self.assertIn("N E X T F L O W", execution.stdout)
+        self.assertFalse(execution.stderr)
+        self.assertEqual(execution.exit_code, 0)
+        command = "nextflow run " +\
+            os.path.abspath(os.path.join(self.pipe_dir,  pipeline.path)) +\
+            " --pdb=" +\
+            os.path.abspath(os.path.join(self.upload_dir, str(pdb_data.id), "1lol.pdb\n"))
+        self.assertEqual(execution.command, command)
+        self.assertLess(abs(execution.started - start), 2)
+        self.assertLess(
+            abs(execution.finished - (execution.started + execution.duration)), 2
+        )
+
+        # The correct number of processes and data were created
+        self.assertEqual(ProcessExecution.objects.count(), 5)
+        self.assertEqual(Data.objects.count(), 7)
+
+        # Process executions are ok
+        for process_execution in execution.process_executions.all():
+            self.assertEqual(process_execution.execution, execution)
+            self.assertIn(process_execution.name, [
+                "CONVERT_REPORT:PDB_TO_MMCIF",
+                "CONVERT_REPORT:MMCIF_REPORT",
+                "SPLIT_REPORT:MMCIF_TO_CHAINS",
+                "SPLIT_REPORT:MMCIF_REPORT (1)",
+                "SPLIT_REPORT:MMCIF_REPORT (2)",
+            ])
+            self.assertIn(process_execution.process_name, [
+                "CONVERT_REPORT:PDB_TO_MMCIF",
+                "CONVERT_REPORT:MMCIF_REPORT",
+                "SPLIT_REPORT:MMCIF_TO_CHAINS",
+                "SPLIT_REPORT:MMCIF_REPORT"
+            ])
+            self.assertEqual(process_execution.status, "COMPLETED")
+            self.assertEqual(len(process_execution.identifier), 9)
+        
+            # Data objects are ok
+            for data in process_execution.data.all():
+                self.assertEqual(data.process_execution, process_execution)
+                self.assertIn(data.filename, [
+                    "report.txt", "1lol.cif", "chain_A.cif", "chain_B.cif"
+                ])
+                self.assertGreater(data.size, 20)
+                self.assertTrue(os.path.exists(data.full_path))

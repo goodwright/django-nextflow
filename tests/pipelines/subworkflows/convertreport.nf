@@ -9,3 +9,14 @@ workflow {
     ch_cif = PDB_TO_MMCIF(params.pdb).cif
     MMCIF_REPORT(ch_cif)
 }
+
+workflow CONVERT_REPORT {
+    take: pdb
+
+    main:
+    ch_cif = PDB_TO_MMCIF(params.pdb).cif
+    MMCIF_REPORT(ch_cif)
+
+    emit:
+    cif = ch_cif
+}
