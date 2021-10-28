@@ -5,6 +5,7 @@ def parse_datetime(dt):
 
 
 def parse_duration(duration):
+    if duration == "-": return 0
     if duration.endswith("ms"):
         return float(duration[:-2]) / 1000
     else:

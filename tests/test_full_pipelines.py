@@ -68,6 +68,7 @@ class PdbToMmcifTests(PipelineTest):
             " --pdb=" +\
             os.path.abspath(os.path.join(self.upload_dir, str(pdb_data.id), "1lol.pdb\n"))
         self.assertEqual(execution.command, command)
+        self.assertIn("[main] DEBUG", execution.get_log_text())
         self.assertEqual(list(execution.upstream.all()), [pdb_data])
         self.assertEqual(list(pdb_data.downstream.all()), [execution])
         self.assertLess(abs(execution.started - start), 2)
@@ -194,6 +195,82 @@ class PdbToMmcifTests(PipelineTest):
                 "fa_icon": "fas fa-barcode"
             }
         })
+
+
+    def test_can_handle_process_error(self):
+        # Upload PDB file
+        pdb_data = Data.create_from_path(self.files_path("bad.pdb"))
+        self.assertEqual(pdb_data.filename, "bad.pdb")
+        self.assertIsNone(pdb_data.process_execution)
+        self.assertTrue(os.path.exists(pdb_data.full_path))
+
+        # Create and run pipeline object
+        pipeline = Pipeline.objects.create(
+            name="Convert to mmCIF",
+            path=os.path.join("subworkflows", "pdb2mmcif.nf")
+        )
+        start = time.time()
+        execution = pipeline.run(data_params={"pdb": pdb_data.id})
+
+        # Execution runs ok
+        self.assertIn(str(execution.id), os.listdir(self.data_dir))
+        self.assertEqual(execution.pipeline, pipeline)
+        self.assertIn("_", execution.identifier)
+        self.assertIn("N E X T F L O W", execution.stdout)
+        self.assertFalse(execution.stderr)
+        self.assertEqual(execution.exit_code, 1)
+        command = "nextflow run " +\
+            os.path.abspath(os.path.join(self.pipe_dir,  pipeline.path)) +\
+            " --pdb=" +\
+            os.path.abspath(os.path.join(self.upload_dir, str(pdb_data.id), "bad.pdb\n"))
+        self.assertEqual(execution.command, command)
+        self.assertEqual(list(execution.upstream.all()), [pdb_data])
+        self.assertEqual(list(pdb_data.downstream.all()), [execution])
+        self.assertLess(abs(execution.started - start), 2)
+        self.assertIn("[main] DEBUG", execution.get_log_text())
+        self.assertLess(
+            abs(execution.finished - (execution.started + execution.duration)), 2
+        )
+
+        # Process execution is not fine
+        self.assertEqual(execution.process_executions.count(), 1)
+        process_execution = execution.process_executions.first()
+        self.assertEqual(process_execution.execution, execution)
+        self.assertEqual(process_execution.name, "PDB_TO_MMCIF")
+        self.assertEqual(process_execution.process_name, "PDB_TO_MMCIF")
+        self.assertEqual(process_execution.status, "FAILED")
+        self.assertEqual(process_execution.stdout, "-")
+        self.assertIn("Traceback (most recent call last):", process_execution.stderr)
+        self.assertEqual(len(process_execution.identifier), 9)
+        self.assertEqual(process_execution.data.count(), 0)
+    
+
+    def test_can_handle_execution_error(self):
+        # Create and run pipeline
+        pipeline = Pipeline.objects.create(
+            name="Convert to mmCIF",
+            path=os.path.join("subworkflows", "bad.nf")
+        )
+        start = time.time()
+        execution = pipeline.run()
+
+        # Execution completes but fails
+        self.assertIn(str(execution.id), os.listdir(self.data_dir))
+        self.assertEqual(execution.pipeline, pipeline)
+        self.assertIn("_", execution.identifier)
+        self.assertIn("N E X T F L O W", execution.stdout)
+        self.assertFalse(execution.stderr)
+        self.assertEqual(execution.exit_code, 1)
+        command = "nextflow run " +\
+            os.path.abspath(os.path.join(self.pipe_dir, pipeline.path)) + "\n"
+        self.assertEqual(execution.command, command)
+        self.assertEqual(list(execution.upstream.all()), [])
+        self.assertLess(abs(execution.started - start), 2)
+        self.assertLess(
+            abs(execution.finished - (execution.started + execution.duration)), 2
+        )
+        self.assertEqual(execution.process_executions.count(), 0)
+
 
 
 
