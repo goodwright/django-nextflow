@@ -174,6 +174,7 @@ class ProcessExecution(models.Model):
 
 
 class Data(models.Model):
+    """A data file."""
 
     filename = models.CharField(max_length=200)
     filetype = models.CharField(max_length=20)
@@ -187,6 +188,8 @@ class Data(models.Model):
 
     @staticmethod
     def create_from_path(path):
+        """Creates a data object representing an uploaded file from a path."""
+
         filename = path.split(os.path.sep)[-1]
         data = Data.objects.create(
             filename=filename, filetype=get_file_extension(filename),
@@ -201,6 +204,8 @@ class Data(models.Model):
 
     @staticmethod
     def create_from_upload(upload):
+        """Creates a data object froma django UploadedFile."""
+
         data = Data.objects.create(
             filename=upload.name, filetype=get_file_extension(upload.name),
             size=upload.size
@@ -208,9 +213,9 @@ class Data(models.Model):
         os.mkdir(os.path.join(settings.NEXTFLOW_UPLOADS_ROOT, str(data.id)))
         with open(os.path.join(
             settings.NEXTFLOW_UPLOADS_ROOT, str(data.id), upload.name
-        ), "wb+") as destination:
+        ), "wb+") as f:
             for chunk in upload.chunks():
-                destination.write(chunk)
+                f.write(chunk)
         return data
     
 
