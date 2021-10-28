@@ -99,7 +99,7 @@ class PdbToMmcifTests(PipelineTest):
         self.assertEqual(data.downstream.count(), 0)
     
 
-    def test_can_get_mmtf_with_param(self):
+    def test_can_use_basic_params(self):
         # Upload PDB file
         pdb_data = Data.create_from_path(self.files_path("1lol.pdb"))
         self.assertEqual(pdb_data.filename, "1lol.pdb")
@@ -155,6 +155,48 @@ class PdbToMmcifTests(PipelineTest):
         self.assertEqual(data.process_execution, process_execution)
         self.assertTrue(os.path.exists(data.full_path))
     
+
+    def test_can_use_config(self):
+        # Upload PDB file
+        pdb_data = Data.create_from_path(self.files_path("1lol.pdb"))
+        self.assertEqual(pdb_data.filename, "1lol.pdb")
+        self.assertEqual(pdb_data.size, 322623)
+        self.assertIsNone(pdb_data.process_execution)
+        self.assertEqual(
+            pdb_data.full_path,
+            os.path.abspath(os.path.join(self.upload_dir, str(pdb_data.id), "1lol.pdb"))
+        )
+        self.assertTrue(os.path.exists(pdb_data.full_path))
+
+        # Create and run pipeline object
+        pipeline = Pipeline.objects.create(
+            name="Convert to mmCIF",
+            path=os.path.join("subworkflows", "pdb2mmcif.nf"),
+            config_path=os.path.join("subworkflows", "pdb2mmcif.config"),
+        )
+        start = time.time()
+        execution = pipeline.run(data_params={"pdb": pdb_data.id})
+
+        # Execution is fine
+        self.assertIn(str(execution.id), os.listdir(self.data_dir))
+        self.assertEqual(execution.pipeline, pipeline)
+        self.assertIn("_", execution.identifier)
+        self.assertIn("N E X T F L O W", execution.stdout)
+        self.assertFalse(execution.stderr)
+        self.assertEqual(execution.exit_code, 0)
+        command = "nextflow -C " +\
+            os.path.abspath(os.path.join(self.pipe_dir,  pipeline.path.replace("nf", "config"))) + \
+            " run " + \
+            os.path.abspath(os.path.join(self.pipe_dir,  pipeline.path)) +\
+            " --pdb=" +\
+            os.path.abspath(os.path.join(self.upload_dir, str(pdb_data.id), "1lol.pdb\n"))
+        
+        self.assertEqual(execution.command, command)
+        self.assertLess(abs(execution.started - start), 2)
+        self.assertLess(
+            abs(execution.finished - (execution.started + execution.duration)), 2
+        )
+        
 
     def test_can_get_pipeline_input_schema(self):
         pipeline = Pipeline.objects.create(
