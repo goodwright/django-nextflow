@@ -5,6 +5,7 @@ process PDB_TO_MMCIF {
 
     input:
     path pdb
+    val print_title
 
     output:
     path "*.cif", emit: cif
@@ -15,7 +16,7 @@ process PDB_TO_MMCIF {
 
     import atomium
     pdb = atomium.open("$pdb")
-    print(pdb.title)
+    if "$print_title" == "yes": print(pdb.title)
     filename = "$pdb"
     filename = ".".join(filename.split(".")[:-1]) + ".cif"
     pdb.model.save(filename)

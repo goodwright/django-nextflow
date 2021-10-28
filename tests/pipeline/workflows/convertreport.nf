@@ -6,7 +6,7 @@ include { MMCIF_REPORT } from '../modules/mmcifreport'
 params.pdb = "*.pdb"
 
 workflow {
-    ch_cif = PDB_TO_MMCIF(params.pdb).cif
+    ch_cif = PDB_TO_MMCIF(params.pdb, "yes").cif
     MMCIF_REPORT(ch_cif)
 }
 
@@ -14,7 +14,7 @@ workflow CONVERT_REPORT {
     take: pdb
 
     main:
-    ch_cif = PDB_TO_MMCIF(params.pdb).cif
+    ch_cif = PDB_TO_MMCIF(params.pdb, "yes").cif
     MMCIF_REPORT(ch_cif)
 
     emit:
