@@ -147,6 +147,47 @@ class PdbToMmcifTests(PipelineTest):
         self.assertGreater(data.size, 200_000)
         self.assertEqual(data.process_execution, process_execution)
         self.assertTrue(os.path.exists(data.full_path))
+    
+
+    def test_can_get_pipeline_input_schema(self):
+        pipeline = Pipeline.objects.create(
+            name="Convert to mmCIF",
+            path=os.path.join("subworkflows", "pdb2mmcif.nf"),
+            schema_path=os.path.join("subworkflows", "pdb2mmcif.json"),
+        )
+        self.assertEqual(pipeline.input_schema, {
+            "file_options": {
+                "title": "File options",
+                "type": "object",
+                "fa_icon": "fas fa-terminal",
+                "description": "File options.",
+                "properties": {
+                    "input": {
+                        "type": "string",
+                        "format": "file-path",
+                        "mimetype": "text/plain",
+                        "pattern": "^\\S+\\.pdb$",
+                        "description": "Path to PDB file.",
+                        "help_text": "Needs to be standard format.",
+                        "fa_icon": "fas fa-file-csv"
+                    }
+                }
+            },
+            "display_options": {
+                "title": "Display options",
+                "type": "object",
+                "description": "Options for what to print",
+                "default": "",
+                "properties": {
+                    "print_title": {
+                        "type": "boolean",
+                        "fa_icon": "fas fa-barcode",
+                        "description": "Print PDB title."
+                    }
+                },
+                "fa_icon": "fas fa-barcode"
+            }
+        })
 
 
 

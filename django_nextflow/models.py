@@ -21,7 +21,13 @@ class Pipeline(models.Model):
         return nextflow.Pipeline(
             path=os.path.join(settings.NEXTFLOW_PIPELINE_ROOT, self.path),
             config=os.path.join(settings.NEXTFLOW_PIPELINE_ROOT, self.config_path) if self.config_path else None,
+            schema=os.path.join(settings.NEXTFLOW_PIPELINE_ROOT, self.schema_path) if self.schema_path else None,
         )
+    
+
+    @property
+    def input_schema(self):
+        return self.create_pipeline().input_schema
     
 
     def create_params(self, params, data_params):
