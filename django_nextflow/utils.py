@@ -9,3 +9,7 @@ def parse_duration(duration):
         return float(duration[:-2]) / 1000
     else:
         return float(duration[:-1])
+    
+
+def get_file_extension(filename):
+    return filename.split(".")[-1] if "." in filename else ""

@@ -38,6 +38,7 @@ class PdbToMmcifTests(PipelineTest):
         # Upload PDB file
         pdb_data = Data.create_from_path(self.files_path("1lol.pdb"))
         self.assertEqual(pdb_data.filename, "1lol.pdb")
+        self.assertEqual(pdb_data.filetype, "pdb")
         self.assertEqual(pdb_data.size, 322623)
         self.assertIsNone(pdb_data.process_execution)
         self.assertEqual(
@@ -148,6 +149,7 @@ class PdbToMmcifTests(PipelineTest):
         self.assertEqual(process_execution.data.count(), 1)
         data = process_execution.data.first()
         self.assertEqual(data.filename, "1lol.cif")
+        self.assertEqual(data.filetype, "cif")
         self.assertGreater(data.size, 200_000)
         self.assertEqual(data.process_execution, process_execution)
         self.assertTrue(os.path.exists(data.full_path))
@@ -203,6 +205,7 @@ class MmcifReportTests(PipelineTest):
             upload = SimpleUploadedFile("1lol.cif", f.read().encode(), content_type="text/plain")
         cif_data = Data.create_from_upload(upload)
         self.assertEqual(cif_data.filename, "1lol.cif")
+        self.assertEqual(cif_data.filetype, "cif")
         self.assertEqual(cif_data.size, 383351)
         self.assertIsNone(cif_data.process_execution)
         self.assertEqual(
@@ -253,6 +256,7 @@ class MmcifReportTests(PipelineTest):
         self.assertEqual(process_execution.data.count(), 1)
         data = process_execution.data.first()
         self.assertEqual(data.filename, "report.txt")
+        self.assertEqual(data.filetype, "txt")
         self.assertGreater(data.size, 50)
         self.assertEqual(data.process_execution, process_execution)
         self.assertTrue(os.path.exists(data.full_path))
@@ -268,6 +272,7 @@ class MmcifToChainsTests(PipelineTest):
             upload = SimpleUploadedFile("1lol.cif", f.read().encode(), content_type="text/plain")
         cif_data = Data.create_from_upload(upload)
         self.assertEqual(cif_data.filename, "1lol.cif")
+        self.assertEqual(cif_data.filetype, "cif")
         self.assertEqual(cif_data.size, 383351)
         self.assertIsNone(cif_data.process_execution)
         self.assertEqual(
@@ -318,6 +323,7 @@ class MmcifToChainsTests(PipelineTest):
         self.assertEqual(process_execution.data.count(), 2)
         for data in process_execution.data.all():
             self.assertIn(data.filename, ["chain_A.cif", "chain_B.cif"])
+            self.assertEqual(data.filetype, "cif")
             self.assertGreater(data.size, 100_000)
             self.assertEqual(data.process_execution, process_execution)
             self.assertTrue(os.path.exists(data.full_path))
@@ -331,6 +337,7 @@ class ConvertAndReportTests(PipelineTest):
         # Upload PDB file
         pdb_data = Data.create_from_path(self.files_path("1lol.pdb"))
         self.assertEqual(pdb_data.filename, "1lol.pdb")
+        self.assertEqual(pdb_data.filetype, "pdb")
         self.assertEqual(pdb_data.size, 322623)
         self.assertIsNone(pdb_data.process_execution)
         self.assertEqual(
@@ -384,6 +391,7 @@ class ConvertAndReportTests(PipelineTest):
         self.assertEqual(process_execution.data.count(), 1)
         data = process_execution.data.first()
         self.assertEqual(data.filename, "1lol.cif")
+        self.assertEqual(data.filetype, "cif")
         self.assertGreater(data.size, 200_000)
         self.assertEqual(data.process_execution, process_execution)
         self.assertTrue(os.path.exists(data.full_path))
@@ -401,6 +409,7 @@ class ConvertAndReportTests(PipelineTest):
         self.assertEqual(process_execution.data.count(), 1)
         data = process_execution.data.first()
         self.assertEqual(data.filename, "report.txt")
+        self.assertEqual(data.filetype, "txt")
         self.assertGreater(data.size, 20)
         self.assertEqual(data.process_execution, process_execution)
         self.assertTrue(os.path.exists(data.full_path))
@@ -416,6 +425,7 @@ class SplitAndReportTests(PipelineTest):
             upload = SimpleUploadedFile("1lol.cif", f.read().encode(), content_type="text/plain")
         cif_data = Data.create_from_upload(upload)
         self.assertEqual(cif_data.filename, "1lol.cif")
+        self.assertEqual(cif_data.filetype, "cif")
         self.assertEqual(cif_data.size, 383351)
         self.assertIsNone(cif_data.process_execution)
         self.assertEqual(
@@ -466,11 +476,11 @@ class SplitAndReportTests(PipelineTest):
         self.assertEqual(process_execution.data.count(), 2)
         for data in process_execution.data.all():
             self.assertIn(data.filename, ["chain_A.cif", "chain_B.cif"])
+            self.assertEqual(data.filetype, "cif")
             self.assertGreater(data.size, 100_000)
             self.assertEqual(data.process_execution, process_execution)
             self.assertTrue(os.path.exists(data.full_path))
             self.assertEqual(data.downstream.count(), 0)
-        
 
         # Process execution 2 is fine
         process_execution = execution.process_executions.all()[1]
@@ -485,6 +495,7 @@ class SplitAndReportTests(PipelineTest):
         self.assertEqual(process_execution.data.count(), 1)
         data = process_execution.data.first()
         self.assertEqual(data.filename, "report.txt")
+        self.assertEqual(data.filetype, "txt")
         self.assertGreater(data.size, 20)
         self.assertEqual(data.process_execution, process_execution)
         self.assertTrue(os.path.exists(data.full_path))
@@ -503,6 +514,7 @@ class SplitAndReportTests(PipelineTest):
         self.assertEqual(process_execution.data.count(), 1)
         data = process_execution.data.first()
         self.assertEqual(data.filename, "report.txt")
+        self.assertEqual(data.filetype, "txt")
         self.assertGreater(data.size, 20)
         self.assertEqual(data.process_execution, process_execution)
         self.assertTrue(os.path.exists(data.full_path))
@@ -516,6 +528,7 @@ class FullWorkflowTests(PipelineTest):
         # Upload PDB file
         pdb_data = Data.create_from_path(self.files_path("1lol.pdb"))
         self.assertEqual(pdb_data.filename, "1lol.pdb")
+        self.assertEqual(pdb_data.filetype, "pdb")
         self.assertEqual(pdb_data.size, 322623)
         self.assertIsNone(pdb_data.process_execution)
         self.assertEqual(

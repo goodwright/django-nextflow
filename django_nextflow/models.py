@@ -4,7 +4,7 @@ import nextflow
 from random import randint
 from django.db import models
 from django.conf import settings
-from .utils import parse_datetime, parse_duration
+from .utils import get_file_extension, parse_datetime, parse_duration
 
 class Pipeline(models.Model):
 
@@ -165,6 +165,7 @@ class ProcessExecution(models.Model):
             for filename in os.listdir(location):
                 Data.objects.create(
                     filename=filename,
+                    filetype=get_file_extension(filename),
                     size=os.path.getsize(os.path.join(location, filename)),
                     process_execution=self
                 )
@@ -175,6 +176,7 @@ class ProcessExecution(models.Model):
 class Data(models.Model):
 
     filename = models.CharField(max_length=200)
+    filetype = models.CharField(max_length=20)
     size = models.IntegerField()
     process_execution = models.ForeignKey(ProcessExecution, null=True, related_name="data", on_delete=models.CASCADE)
     downstream = models.ManyToManyField(Execution, related_name="upstream")
@@ -186,7 +188,10 @@ class Data(models.Model):
     @staticmethod
     def create_from_path(path):
         filename = path.split(os.path.sep)[-1]
-        data = Data.objects.create(filename=filename, size=os.path.getsize(path))
+        data = Data.objects.create(
+            filename=filename, filetype=get_file_extension(filename),
+            size=os.path.getsize(path)
+        )
         os.mkdir(os.path.join(settings.NEXTFLOW_UPLOADS_ROOT, str(data.id)))
         shutil.copy(path, os.path.join(
             settings.NEXTFLOW_UPLOADS_ROOT, str(data.id), filename
@@ -196,7 +201,10 @@ class Data(models.Model):
 
     @staticmethod
     def create_from_upload(upload):
-        data = Data.objects.create(filename=upload.name, size=upload.size)
+        data = Data.objects.create(
+            filename=upload.name, filetype=get_file_extension(upload.name),
+            size=upload.size
+        )
         os.mkdir(os.path.join(settings.NEXTFLOW_UPLOADS_ROOT, str(data.id)))
         with open(os.path.join(
             settings.NEXTFLOW_UPLOADS_ROOT, str(data.id), upload.name
