@@ -45,6 +45,7 @@ class PdbToMmcifTests(PipelineTest):
             os.path.abspath(os.path.join(self.upload_dir, str(pdb_data.id), "1lol.pdb"))
         )
         self.assertTrue(os.path.exists(pdb_data.full_path))
+        self.assertEqual(pdb_data.downstream.count(), 0)
 
         # Create and run pipeline object
         pipeline = Pipeline.objects.create(
@@ -66,6 +67,8 @@ class PdbToMmcifTests(PipelineTest):
             " --pdb=" +\
             os.path.abspath(os.path.join(self.upload_dir, str(pdb_data.id), "1lol.pdb\n"))
         self.assertEqual(execution.command, command)
+        self.assertEqual(list(execution.upstream.all()), [pdb_data])
+        self.assertEqual(list(pdb_data.downstream.all()), [execution])
         self.assertLess(abs(execution.started - start), 2)
         self.assertLess(
             abs(execution.finished - (execution.started + execution.duration)), 2
@@ -91,6 +94,7 @@ class PdbToMmcifTests(PipelineTest):
         self.assertGreater(data.size, 200_000)
         self.assertEqual(data.process_execution, process_execution)
         self.assertTrue(os.path.exists(data.full_path))
+        self.assertEqual(data.downstream.count(), 0)
     
 
     def test_can_get_mmtf_with_param(self):
@@ -206,6 +210,7 @@ class MmcifReportTests(PipelineTest):
             os.path.abspath(os.path.join(self.upload_dir, str(cif_data.id), "1lol.cif"))
         )
         self.assertTrue(os.path.exists(cif_data.full_path))
+        self.assertEqual(cif_data.downstream.count(), 0)
 
         # Create and run pipeline object
         pipeline = Pipeline.objects.create(
@@ -227,6 +232,8 @@ class MmcifReportTests(PipelineTest):
             " --mmcif=" +\
             os.path.abspath(os.path.join(self.upload_dir, str(cif_data.id), "1lol.cif\n"))
         self.assertEqual(execution.command, command)
+        self.assertEqual(list(execution.upstream.all()), [cif_data])
+        self.assertEqual(list(cif_data.downstream.all()), [execution])
         self.assertLess(abs(execution.started - start), 2)
         self.assertLess(
             abs(execution.finished - (execution.started + execution.duration)), 2
@@ -249,6 +256,7 @@ class MmcifReportTests(PipelineTest):
         self.assertGreater(data.size, 50)
         self.assertEqual(data.process_execution, process_execution)
         self.assertTrue(os.path.exists(data.full_path))
+        self.assertEqual(data.downstream.count(), 0)
 
 
 
@@ -267,6 +275,7 @@ class MmcifToChainsTests(PipelineTest):
             os.path.abspath(os.path.join(self.upload_dir, str(cif_data.id), "1lol.cif"))
         )
         self.assertTrue(os.path.exists(cif_data.full_path))
+        self.assertEqual(cif_data.downstream.count(), 0)
 
         # Create and run pipeline object
         pipeline = Pipeline.objects.create(
@@ -288,6 +297,8 @@ class MmcifToChainsTests(PipelineTest):
             " --mmcif=" +\
             os.path.abspath(os.path.join(self.upload_dir, str(cif_data.id), "1lol.cif\n"))
         self.assertEqual(execution.command, command)
+        self.assertEqual(list(execution.upstream.all()), [cif_data])
+        self.assertEqual(list(cif_data.downstream.all()), [execution])
         self.assertLess(abs(execution.started - start), 2)
         self.assertLess(
             abs(execution.finished - (execution.started + execution.duration)), 2
@@ -310,6 +321,7 @@ class MmcifToChainsTests(PipelineTest):
             self.assertGreater(data.size, 100_000)
             self.assertEqual(data.process_execution, process_execution)
             self.assertTrue(os.path.exists(data.full_path))
+            self.assertEqual(data.downstream.count(), 0)
 
 
 
@@ -326,6 +338,7 @@ class ConvertAndReportTests(PipelineTest):
             os.path.abspath(os.path.join(self.upload_dir, str(pdb_data.id), "1lol.pdb"))
         )
         self.assertTrue(os.path.exists(pdb_data.full_path))
+        self.assertEqual(pdb_data.downstream.count(), 0)
 
         # Create and run pipeline object
         pipeline = Pipeline.objects.create(
@@ -347,6 +360,8 @@ class ConvertAndReportTests(PipelineTest):
             " --pdb=" +\
             os.path.abspath(os.path.join(self.upload_dir, str(pdb_data.id), "1lol.pdb\n"))
         self.assertEqual(execution.command, command)
+        self.assertEqual(list(execution.upstream.all()), [pdb_data])
+        self.assertEqual(list(pdb_data.downstream.all()), [execution])
         self.assertLess(abs(execution.started - start), 2)
         self.assertLess(
             abs(execution.finished - (execution.started + execution.duration)), 2
@@ -389,6 +404,7 @@ class ConvertAndReportTests(PipelineTest):
         self.assertGreater(data.size, 20)
         self.assertEqual(data.process_execution, process_execution)
         self.assertTrue(os.path.exists(data.full_path))
+        self.assertEqual(data.downstream.count(), 0)
 
 
 
@@ -407,6 +423,7 @@ class SplitAndReportTests(PipelineTest):
             os.path.abspath(os.path.join(self.upload_dir, str(cif_data.id), "1lol.cif"))
         )
         self.assertTrue(os.path.exists(cif_data.full_path))
+        self.assertEqual(cif_data.downstream.count(), 0)
 
         # Create and run pipeline object
         pipeline = Pipeline.objects.create(
@@ -428,6 +445,8 @@ class SplitAndReportTests(PipelineTest):
             " --mmcif=" +\
             os.path.abspath(os.path.join(self.upload_dir, str(cif_data.id), "1lol.cif\n"))
         self.assertEqual(execution.command, command)
+        self.assertEqual(list(execution.upstream.all()), [cif_data])
+        self.assertEqual(list(cif_data.downstream.all()), [execution])
         self.assertLess(abs(execution.started - start), 2)
         self.assertLess(
             abs(execution.finished - (execution.started + execution.duration)), 2
@@ -450,6 +469,7 @@ class SplitAndReportTests(PipelineTest):
             self.assertGreater(data.size, 100_000)
             self.assertEqual(data.process_execution, process_execution)
             self.assertTrue(os.path.exists(data.full_path))
+            self.assertEqual(data.downstream.count(), 0)
         
 
         # Process execution 2 is fine
@@ -468,6 +488,7 @@ class SplitAndReportTests(PipelineTest):
         self.assertGreater(data.size, 20)
         self.assertEqual(data.process_execution, process_execution)
         self.assertTrue(os.path.exists(data.full_path))
+        self.assertEqual(data.downstream.count(), 0)
 
         # Process execution 3 is fine
         process_execution = execution.process_executions.last()
@@ -485,6 +506,7 @@ class SplitAndReportTests(PipelineTest):
         self.assertGreater(data.size, 20)
         self.assertEqual(data.process_execution, process_execution)
         self.assertTrue(os.path.exists(data.full_path))
+        self.assertEqual(data.downstream.count(), 0)
 
 
 
@@ -501,6 +523,7 @@ class FullWorkflowTests(PipelineTest):
             os.path.abspath(os.path.join(self.upload_dir, str(pdb_data.id), "1lol.pdb"))
         )
         self.assertTrue(os.path.exists(pdb_data.full_path))
+        self.assertEqual(pdb_data.downstream.count(), 0)
 
         # Create and run pipeline object
         pipeline = Pipeline.objects.create(
@@ -522,6 +545,8 @@ class FullWorkflowTests(PipelineTest):
             " --pdb=" +\
             os.path.abspath(os.path.join(self.upload_dir, str(pdb_data.id), "1lol.pdb\n"))
         self.assertEqual(execution.command, command)
+        self.assertEqual(list(execution.upstream.all()), [pdb_data])
+        self.assertEqual(list(pdb_data.downstream.all()), [execution])
         self.assertLess(abs(execution.started - start), 2)
         self.assertLess(
             abs(execution.finished - (execution.started + execution.duration)), 2
@@ -558,3 +583,4 @@ class FullWorkflowTests(PipelineTest):
                 ])
                 self.assertGreater(data.size, 20)
                 self.assertTrue(os.path.exists(data.full_path))
+                self.assertEqual(data.downstream.count(), 0)

@@ -32,23 +32,26 @@ class Pipeline(models.Model):
 
     def create_params(self, params, data_params):
         params = {**(params if params else {})}
+        data_objects = []
         if data_params:
             for name, data_id in data_params.items():
                 data = Data.objects.get(id=data_id)
                 path = data.full_path
                 params[name] = path
-        return params
+                data_objects.append(data)
+        return params, data_objects
 
 
     def run(self, params=None, data_params=None):
         pipeline = self.create_pipeline()
         id = Execution.prepare_directory()
-        params = self.create_params(params or {}, data_params or {})
+        params, data_objects = self.create_params(params or {}, data_params or {})
         execution = pipeline.run(
             location=os.path.join(settings.NEXTFLOW_DATA_ROOT, str(id)),
             params=params
         )
         execution_model = Execution.create_from_object(execution, id, self)
+        for data in data_objects: execution_model.upstream.add(data)
         for process_execution in execution.process_executions:
             process_execution_model = ProcessExecution.create_from_object(
                 process_execution, execution_model
@@ -174,6 +177,7 @@ class Data(models.Model):
     filename = models.CharField(max_length=200)
     size = models.IntegerField()
     process_execution = models.ForeignKey(ProcessExecution, null=True, related_name="data", on_delete=models.CASCADE)
+    downstream = models.ManyToManyField(Execution, related_name="upstream")
 
     def __str__(self):
         return self.filename
