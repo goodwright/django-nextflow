@@ -121,8 +121,8 @@ class Execution(models.Model):
 
 
 
-
 class ProcessExecution(models.Model):
+    """A record of the execution of a process."""
 
     name = models.CharField(max_length=200)
     process_name = models.CharField(max_length=200)
@@ -138,6 +138,9 @@ class ProcessExecution(models.Model):
 
     @staticmethod
     def create_from_object(process_execution, execution):
+        """Creates a ProcessExecution model object from a nextflow.py
+        ProcessExecution."""
+
         return ProcessExecution.objects.create(
             name=process_execution.name,
             process_name=process_execution.process,
@@ -151,15 +154,18 @@ class ProcessExecution(models.Model):
 
     @property
     def publish_dir(self):
+        """The location where the process would have published its files."""
+
         return os.path.join(
-            settings.NEXTFLOW_DATA_ROOT,
-            str(self.execution.id),
-            settings.NEXTFLOW_PUBLISH_DIR,
-            self.name
+            settings.NEXTFLOW_DATA_ROOT, str(self.execution.id),
+            settings.NEXTFLOW_PUBLISH_DIR, self.name
         )
     
 
     def create_data_objects(self):
+        """Looks at the files in its publish directory and makes Data objects
+        from them."""
+
         location = self.publish_dir
         try:
             for filename in os.listdir(location):
