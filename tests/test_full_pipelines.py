@@ -6,7 +6,7 @@ from django.test.utils import override_settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django_nextflow.models import Data, Pipeline, ProcessExecution
 
-@override_settings(NEXTFLOW_PIPELINE_ROOT=os.path.join("tests", "pipelines"))
+@override_settings(NEXTFLOW_PIPELINE_ROOT=os.path.join("tests", "pipeline"))
 @override_settings(NEXTFLOW_DATA_ROOT=os.path.join("tests", "data"))
 @override_settings(NEXTFLOW_UPLOADS_ROOT=os.path.join("tests", "uploads"))
 @override_settings(NEXTFLOW_PUBLISH_DIR=os.path.join("results"))
@@ -15,7 +15,7 @@ class PipelineTest(TestCase):
     def setUp(self):
         self.data_dir = os.path.join("tests", "data")
         self.upload_dir = os.path.join("tests", "uploads")
-        self.pipe_dir = os.path.join("tests", "pipelines")
+        self.pipe_dir = os.path.join("tests", "pipeline")
         self.files_dir = os.path.join("tests", "files")
         if os.path.exists(self.data_dir): shutil.rmtree(self.data_dir)
         if os.path.exists(self.upload_dir): shutil.rmtree(self.upload_dir)
@@ -233,7 +233,7 @@ class ConvertAndReportTests(PipelineTest):
         # Create and run pipeline object
         pipeline = Pipeline.objects.create(
             name="Convert and report",
-            path=os.path.join("subworkflows", "convertreport.nf")
+            path=os.path.join("workflows", "convertreport.nf")
         )
         start = time.time()
         execution = pipeline.run(data_params={"pdb": pdb_data.id})
@@ -314,7 +314,7 @@ class SplitAndReportTests(PipelineTest):
         # Create and run pipeline object
         pipeline = Pipeline.objects.create(
             name="Split and Report",
-            path=os.path.join("subworkflows", "splitreport.nf")
+            path=os.path.join("workflows", "splitreport.nf")
         )
         start = time.time()
         execution = pipeline.run(data_params={"mmcif": cif_data.id})
