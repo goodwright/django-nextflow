@@ -71,7 +71,7 @@ class PdbToMmcifTests(PipelineTest):
         self.assertIn("[main] DEBUG", execution.get_log_text())
         self.assertEqual(list(execution.upstream.all()), [pdb_data])
         self.assertEqual(list(pdb_data.downstream.all()), [execution])
-        self.assertLess(abs(execution.started - start), 2)
+        self.assertLess(abs(execution.started - start), 5)
         self.assertLess(
             abs(execution.finished - (execution.started + execution.duration)), 2
         )
@@ -131,7 +131,7 @@ class PdbToMmcifTests(PipelineTest):
             " --print_title=no --pdb=" +\
             os.path.abspath(os.path.join(self.upload_dir, str(pdb_data.id), "1lol.pdb\n"))
         self.assertEqual(execution.command, command)
-        self.assertLess(abs(execution.started - start), 2)
+        self.assertLess(abs(execution.started - start), 5)
         self.assertLess(
             abs(execution.finished - (execution.started + execution.duration)), 2
         )
@@ -192,7 +192,7 @@ class PdbToMmcifTests(PipelineTest):
             os.path.abspath(os.path.join(self.upload_dir, str(pdb_data.id), "1lol.pdb\n"))
         
         self.assertEqual(execution.command, command)
-        self.assertLess(abs(execution.started - start), 2)
+        self.assertLess(abs(execution.started - start), 5)
         self.assertLess(
             abs(execution.finished - (execution.started + execution.duration)), 2
         )
@@ -268,7 +268,7 @@ class PdbToMmcifTests(PipelineTest):
         self.assertEqual(execution.command, command)
         self.assertEqual(list(execution.upstream.all()), [pdb_data])
         self.assertEqual(list(pdb_data.downstream.all()), [execution])
-        self.assertLess(abs(execution.started - start), 2)
+        self.assertLess(abs(execution.started - start), 5)
         self.assertIn("[main] DEBUG", execution.get_log_text())
         self.assertLess(
             abs(execution.finished - (execution.started + execution.duration)), 2
@@ -307,7 +307,7 @@ class PdbToMmcifTests(PipelineTest):
             os.path.abspath(os.path.join(self.pipe_dir, pipeline.path)) + "\n"
         self.assertEqual(execution.command, command)
         self.assertEqual(list(execution.upstream.all()), [])
-        self.assertLess(abs(execution.started - start), 2)
+        self.assertLess(abs(execution.started - start), 5)
         self.assertLess(
             abs(execution.finished - (execution.started + execution.duration)), 2
         )
@@ -356,7 +356,7 @@ class MmcifReportTests(PipelineTest):
         self.assertEqual(execution.command, command)
         self.assertEqual(list(execution.upstream.all()), [cif_data])
         self.assertEqual(list(cif_data.downstream.all()), [execution])
-        self.assertLess(abs(execution.started - start), 2)
+        self.assertLess(abs(execution.started - start), 5)
         self.assertLess(
             abs(execution.finished - (execution.started + execution.duration)), 2
         )
@@ -423,7 +423,7 @@ class MmcifToChainsTests(PipelineTest):
         self.assertEqual(execution.command, command)
         self.assertEqual(list(execution.upstream.all()), [cif_data])
         self.assertEqual(list(cif_data.downstream.all()), [execution])
-        self.assertLess(abs(execution.started - start), 2)
+        self.assertLess(abs(execution.started - start), 5)
         self.assertLess(
             abs(execution.finished - (execution.started + execution.duration)), 2
         )
@@ -488,7 +488,7 @@ class ConvertAndReportTests(PipelineTest):
         self.assertEqual(execution.command, command)
         self.assertEqual(list(execution.upstream.all()), [pdb_data])
         self.assertEqual(list(pdb_data.downstream.all()), [execution])
-        self.assertLess(abs(execution.started - start), 2)
+        self.assertLess(abs(execution.started - start), 5)
         self.assertLess(
             abs(execution.finished - (execution.started + execution.duration)), 2
         )
@@ -576,7 +576,7 @@ class SplitAndReportTests(PipelineTest):
         self.assertEqual(execution.command, command)
         self.assertEqual(list(execution.upstream.all()), [cif_data])
         self.assertEqual(list(cif_data.downstream.all()), [execution])
-        self.assertLess(abs(execution.started - start), 2)
+        self.assertLess(abs(execution.started - start), 5)
         self.assertLess(
             abs(execution.finished - (execution.started + execution.duration)), 2
         )
@@ -679,7 +679,7 @@ class FullWorkflowTests(PipelineTest):
         self.assertEqual(execution.command, command)
         self.assertEqual(list(execution.upstream.all()), [pdb_data])
         self.assertEqual(list(pdb_data.downstream.all()), [execution])
-        self.assertLess(abs(execution.started - start), 2)
+        self.assertLess(abs(execution.started - start), 5)
         self.assertLess(
             abs(execution.finished - (execution.started + execution.duration)), 2
         )
