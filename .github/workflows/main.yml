@@ -26,11 +26,12 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: '11'
-      - name: Install dependencies
+      - name: Install Nextflow
         run: |
           curl -s https://get.nextflow.io | bash
           chmod +x nextflow
           mv nextflow /usr/local/bin
+      - name: Install dependencies
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install -r dev-requirements.txt
