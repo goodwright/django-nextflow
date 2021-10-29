@@ -7,6 +7,7 @@ from django.conf import settings
 from .utils import get_file_extension, parse_datetime, parse_duration
 
 class Pipeline(models.Model):
+    """A Nextflow pipeline, representing some .nf file."""
 
     name = models.CharField(max_length=200)
     path = models.CharField(max_length=300)
@@ -18,24 +19,36 @@ class Pipeline(models.Model):
     
 
     def create_pipeline(self):
+        """Creates a nextflow.py pipeline from the model."""
+
         return nextflow.Pipeline(
             path=os.path.join(settings.NEXTFLOW_PIPELINE_ROOT, self.path),
-            config=os.path.join(settings.NEXTFLOW_PIPELINE_ROOT, self.config_path) if self.config_path else None,
-            schema=os.path.join(settings.NEXTFLOW_PIPELINE_ROOT, self.schema_path) if self.schema_path else None,
+            config=os.path.join(
+                settings.NEXTFLOW_PIPELINE_ROOT, self.config_path
+            ) if self.config_path else None,
+            schema=os.path.join(
+                settings.NEXTFLOW_PIPELINE_ROOT, self.schema_path
+            ) if self.schema_path else None,
         )
     
 
     @property
     def input_schema(self):
+        """Gets the pipeline's input requirements according to the schema
+        file."""
+
         return self.create_pipeline().input_schema
     
 
     def create_params(self, params, data_params):
+        """Creates param string for an execution."""
+
         params = {**(params if params else {})}
         data_objects = []
         if data_params:
             for name, data_id in data_params.items():
-                data = Data.objects.get(id=data_id)
+                data = Data.objects.filter(id=data_id).first()
+                if not data: continue
                 path = data.full_path
                 params[name] = path
                 data_objects.append(data)
@@ -43,6 +56,8 @@ class Pipeline(models.Model):
 
 
     def run(self, params=None, data_params=None):
+        """Run the pipeline with a set of parameters."""
+        
         pipeline = self.create_pipeline()
         id = Execution.prepare_directory()
         params, data_objects = self.create_params(params or {}, data_params or {})
