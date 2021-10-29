@@ -1,0 +1,38 @@
+name: Python package
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version:
+          - "3.6"
+          - "3.7"
+          - "3.8"
+          - "3.9"
+        django-version:
+          - "3.1"
+          - "3.2"  # LTS
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          wget -qO- https://get.nextflow.io | bash
+          chmod +x nextflow
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          python -m pip install "Django~=${{ matrix.django-version }}"
+          pip install mixer
+          pip install python-coveralls
+          pip install coverage==4.5.4
+      - name: Test
+        run: |
+          DJANGO_SETTINGS_MODULE=tests.test_settings python -m django test
