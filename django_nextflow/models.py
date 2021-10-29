@@ -62,6 +62,7 @@ class Pipeline(models.Model):
 
 
 class Execution(models.Model):
+    """A record of the running of some Nextflow file."""
 
     identifier = models.CharField(max_length=100)
     stdout = models.TextField()
@@ -98,6 +99,9 @@ class Execution(models.Model):
 
     @staticmethod
     def prepare_directory():
+        """Generates a random 18-digit ID and creates a directory in the data
+        root with that ID. The ID itself is returned."""
+
         digits_length = 18
         id = randint(10 ** (digits_length - 1), 10 ** digits_length)
         os.mkdir(os.path.join(settings.NEXTFLOW_DATA_ROOT, str(id)))
@@ -106,14 +110,12 @@ class Execution(models.Model):
 
     @staticmethod
     def create_from_object(execution, id, pipeline):
+        """Creates a Execution model object from a nextflow.py Execution."""
+
         return Execution.objects.create(
-            id=id,
-            identifier=execution.id,
-            stdout=execution.process.stdout,
-            stderr=execution.process.stderr,
-            exit_code=execution.process.returncode,
-            status=execution.status,
-            command=execution.command,
+            id=id, identifier=execution.id, command=execution.command,
+            stdout=execution.process.stdout, stderr=execution.process.stderr,
+            exit_code=execution.process.returncode, status=execution.status,
             started=parse_datetime(execution.datetime),
             duration=parse_duration(execution.duration),
             pipeline=pipeline
