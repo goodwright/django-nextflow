@@ -5,7 +5,7 @@
 [![](https://img.shields.io/pypi/djversions/django-nextflow?color=0C4B33&logo=django&logoColor=white&label=django)](https://www.djangoproject.com/)
 [![](https://img.shields.io/pypi/l/django-nextflow.svg?color=blue)](https://github.com/goodwright/django-nextflow/blob/master/LICENSE)
 
-django-nextflow is Django app for runnign Nextflow pipelines and storing their
+django-nextflow is Django app for running Nextflow pipelines and storing their
 results in a database within a Django web app.
 
 ## Installation
@@ -16,7 +16,7 @@ nextflow.py is available through PyPI:
 pip install django-nextflow
 ```
 
-You must install Nextflow itself separately: see the
+You must install the Nextflow executable itself separately: see the
 [Nextflow Documentation](https://www.nextflow.io/docs/latest/getstarted.html#installation)
 for help with this.
 
