@@ -5,7 +5,7 @@ with open("README.md") as f:
 
 setup(
     name="django_nextflow",
-    version="0.1.0",
+    version="0.1.1",
     description="A django library for running Nextflow pipelines and storing their result.",
     long_description=long_description,
     long_description_content_type="text/markdown",
