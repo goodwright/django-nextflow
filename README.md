@@ -106,6 +106,14 @@ data2 = Data.create_from_upload(django_upload_object)
 
 The file will be copied to `NEXTFLOW_UPLOADS_ROOT` in this case.
 
+## Changelog
+
+### 0.1.1
+
+*3rd November, 2021*
+
+- Fix duration string parsing.
+
 ### 0.1
 
 *29th October, 2021*
