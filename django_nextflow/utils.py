@@ -10,10 +10,18 @@ def parse_duration(duration):
     """Gets a duration in seconds from a Nextflow duration string."""
 
     if duration == "-": return 0
-    if duration.endswith("ms"):
+    if " " in duration:
+        values = duration.split()
+        return sum(parse_duration(v) for v in values)
+    elif duration.endswith("ms"):
         return float(duration[:-2]) / 1000
-    else:
+    elif duration.endswith("s"):
         return float(duration[:-1])
+    elif duration.endswith("m"):
+        return float(duration[:-1]) * 60
+    elif duration.endswith("h"):
+        return float(duration[:-1]) * 3600
+        
     
 
 def get_file_extension(filename):

@@ -21,6 +21,16 @@ class DurationParsingTests(TestCase):
 
     def test_can_get_second_duration(self):
         self.assertEqual(parse_duration("100s"), 100)
+    
+
+    def test_can_get_minute_duration(self):
+        self.assertEqual(parse_duration("2m"), 120)
+        self.assertEqual(parse_duration("2m 3s"), 123)
+    
+
+    def test_can_get_minute_duration(self):
+        self.assertEqual(parse_duration("1h"), 3600)
+        self.assertEqual(parse_duration("4h 2m 3s"), 14523)
 
 
 
