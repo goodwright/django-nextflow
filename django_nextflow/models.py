@@ -10,6 +10,7 @@ class Pipeline(models.Model):
     """A Nextflow pipeline, representing some .nf file."""
 
     name = models.CharField(max_length=200)
+    description = models.TextField()
     path = models.CharField(max_length=300)
     schema_path = models.CharField(max_length=300)
     config_path = models.CharField(max_length=300)
