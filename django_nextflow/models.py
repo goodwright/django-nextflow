@@ -1,4 +1,5 @@
 import os
+import time
 import shutil
 import nextflow
 from random import randint
@@ -203,6 +204,7 @@ class Data(models.Model):
     filename = models.CharField(max_length=200)
     filetype = models.CharField(max_length=20)
     size = models.IntegerField()
+    created = models.IntegerField(default=time.time)
     process_execution = models.ForeignKey(ProcessExecution, null=True, related_name="data", on_delete=models.CASCADE)
     downstream = models.ManyToManyField(Execution, related_name="upstream")
 

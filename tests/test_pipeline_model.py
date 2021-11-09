@@ -10,6 +10,7 @@ class PipelineCreationTests(TestCase):
     def test_pipeline_creation(self):
         pipeline = Pipeline.objects.create(
             name="Run analysis",
+            description="Run some analysis",
             path="runanalysis.nf",
             config_path="nextflow.config",
             schema_path="schema.json"

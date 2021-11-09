@@ -40,6 +40,7 @@ class PdbToMmcifTests(PipelineTest):
         self.assertEqual(pdb_data.filename, "1lol.pdb")
         self.assertEqual(pdb_data.filetype, "pdb")
         self.assertEqual(pdb_data.size, 322623)
+        self.assertLess(abs(pdb_data.created - time.time()), 2)
         self.assertIsNone(pdb_data.process_execution)
         self.assertEqual(
             pdb_data.full_path,
@@ -326,6 +327,7 @@ class MmcifReportTests(PipelineTest):
         self.assertEqual(cif_data.filename, "1lol.cif")
         self.assertEqual(cif_data.filetype, "cif")
         self.assertEqual(cif_data.size, 383351)
+        self.assertLess(abs(cif_data.created - time.time()), 2)
         self.assertIsNone(cif_data.process_execution)
         self.assertEqual(
             cif_data.full_path,
@@ -393,6 +395,7 @@ class MmcifToChainsTests(PipelineTest):
         self.assertEqual(cif_data.filename, "1lol.cif")
         self.assertEqual(cif_data.filetype, "cif")
         self.assertEqual(cif_data.size, 383351)
+        self.assertLess(abs(cif_data.created - time.time()), 2)
         self.assertIsNone(cif_data.process_execution)
         self.assertEqual(
             cif_data.full_path,
@@ -458,6 +461,7 @@ class ConvertAndReportTests(PipelineTest):
         self.assertEqual(pdb_data.filename, "1lol.pdb")
         self.assertEqual(pdb_data.filetype, "pdb")
         self.assertEqual(pdb_data.size, 322623)
+        self.assertLess(abs(pdb_data.created - time.time()), 2)
         self.assertIsNone(pdb_data.process_execution)
         self.assertEqual(
             pdb_data.full_path,
@@ -546,6 +550,7 @@ class SplitAndReportTests(PipelineTest):
         self.assertEqual(cif_data.filename, "1lol.cif")
         self.assertEqual(cif_data.filetype, "cif")
         self.assertEqual(cif_data.size, 383351)
+        self.assertLess(abs(cif_data.created - time.time()), 2)
         self.assertIsNone(cif_data.process_execution)
         self.assertEqual(
             cif_data.full_path,
@@ -649,6 +654,7 @@ class FullWorkflowTests(PipelineTest):
         self.assertEqual(pdb_data.filename, "1lol.pdb")
         self.assertEqual(pdb_data.filetype, "pdb")
         self.assertEqual(pdb_data.size, 322623)
+        self.assertLess(abs(pdb_data.created - time.time()), 2)
         self.assertIsNone(pdb_data.process_execution)
         self.assertEqual(
             pdb_data.full_path,
@@ -659,7 +665,7 @@ class FullWorkflowTests(PipelineTest):
 
         # Create and run pipeline object
         pipeline = Pipeline.objects.create(
-            name="Analyse PDB",
+            name="Analyse PDB", description="Long Text",
             path=os.path.join("main.nf")
         )
         start = time.time()

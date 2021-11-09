@@ -1,4 +1,5 @@
 import os
+import time
 from unittest.mock import patch
 from django.test.utils import override_settings
 from mixer.backend.django import mixer
@@ -15,6 +16,7 @@ class DataCreationTests(TestCase):
         )
         data.full_clean()
         self.assertEqual(str(data), "reads.fastq")
+        self.assertLess(abs(data.created - time.time()), 1)
         self.assertEqual(data.downstream.count(), 0)
 
 
@@ -33,6 +35,7 @@ class DataCreationFromPathTests(TestCase):
         self.assertEqual(data.filename, "file")
         self.assertEqual(data.filetype, "txt")
         self.assertEqual(data.size, 100)
+        self.assertLess(abs(data.created - time.time()), 1)
         self.assertIsNone(data.process_execution)
         mock_mk.assert_called_with(os.path.join("/uploads", str(data.id)))
         mock_copy.assert_called_with("/path/to/file", os.path.join(
@@ -52,6 +55,7 @@ class DataCreationFromUploadedFile(TestCase):
         self.assertEqual(data.filename, "file.txt")
         self.assertEqual(data.filetype, "txt")
         self.assertEqual(data.size, 3)
+        self.assertLess(abs(data.created - time.time()), 1)
         self.assertIsNone(data.process_execution)
         mock_mk.assert_called_with(os.path.join("/uploads", str(data.id)))
         mock_open.assert_called_with(os.path.join(
