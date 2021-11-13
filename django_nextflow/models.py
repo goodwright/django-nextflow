@@ -68,12 +68,14 @@ class Pipeline(models.Model):
             params=params
         )
         execution_model = Execution.create_from_object(execution, id, self)
-        for data in data_objects: execution_model.upstream.add(data)
+        for data in data_objects: execution_model.upstream_data.add(data)
         for process_execution in execution.process_executions:
             process_execution_model = ProcessExecution.create_from_object(
                 process_execution, execution_model
             )
-            process_execution_model.create_data_objects()
+            process_execution_model.create_downstream_data_objects()
+        for process_execution_model in execution_model.process_executions.all():
+            process_execution_model.create_upstream_data_objects()
         return execution_model
 
 
@@ -181,7 +183,19 @@ class ProcessExecution(models.Model):
         )
     
 
-    def create_data_objects(self):
+    @property
+    def work_dir(self):
+        """The process execution's work directory."""
+
+        components = self.identifier.split("/")
+        work = os.path.join(
+            settings.NEXTFLOW_DATA_ROOT, str(self.execution.id), "work", components[0]
+        )
+        subdir = [d for d in os.listdir(work) if d.startswith(components[1])][0]
+        return os.path.join(work, subdir)
+
+
+    def create_downstream_data_objects(self):
         """Looks at the files in its publish directory and makes Data objects
         from them."""
 
@@ -192,9 +206,32 @@ class ProcessExecution(models.Model):
                     filename=filename,
                     filetype=get_file_extension(filename),
                     size=os.path.getsize(os.path.join(location, filename)),
-                    process_execution=self
+                    upstream_process_execution=self
                 )
         except FileNotFoundError: pass
+    
+
+    def create_upstream_data_objects(self):
+        """Looks at the files in its work directory and connects to Data objects
+        from those which are symlinks."""
+
+        for f in os.listdir(self.work_dir):
+            try:
+                source = os.readlink(os.path.join(self.work_dir, f))
+            except OSError: continue
+            if settings.NEXTFLOW_UPLOADS_ROOT in source:
+                data_id = source.split(os.path.sep)[-2]
+                self.upstream_data.add(Data.objects.get(id=data_id))
+            else:
+                components = source.split(os.path.sep)
+                execution_id = components[-5]
+                identifier = "/".join(components[-3:-1])[:9]
+                filename = components[-1]
+                self.upstream_data.add(
+                    Execution.objects.get(id=execution_id).process_executions.get(
+                        identifier=identifier
+                    ).downstream_data.get(filename=filename)
+                )
 
 
 
@@ -205,8 +242,9 @@ class Data(models.Model):
     filetype = models.CharField(max_length=20)
     size = models.IntegerField()
     created = models.IntegerField(default=time.time)
-    process_execution = models.ForeignKey(ProcessExecution, null=True, related_name="data", on_delete=models.CASCADE)
-    downstream = models.ManyToManyField(Execution, related_name="upstream")
+    upstream_process_execution = models.ForeignKey(ProcessExecution, null=True, related_name="downstream_data", on_delete=models.CASCADE)
+    downstream_executions = models.ManyToManyField(Execution, related_name="upstream_data")
+    downstream_process_executions = models.ManyToManyField(ProcessExecution, related_name="upstream_data")
 
     def __str__(self):
         return self.filename
@@ -249,11 +287,12 @@ class Data(models.Model):
     def full_path(self):
         """Gets the data's full path on the filesystem."""
 
-        if self.process_execution:
+        if self.upstream_process_execution:
             location = os.path.join(
                 settings.NEXTFLOW_DATA_ROOT,
-                str(self.process_execution.execution.id),
-                settings.NEXTFLOW_PUBLISH_DIR, self.process_execution.name,
+                str(self.upstream_process_execution.execution.id),
+                settings.NEXTFLOW_PUBLISH_DIR,
+                self.upstream_process_execution.name,
             )
         else:
             location = os.path.join(

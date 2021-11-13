@@ -41,13 +41,14 @@ class PdbToMmcifTests(PipelineTest):
         self.assertEqual(pdb_data.filetype, "pdb")
         self.assertEqual(pdb_data.size, 322623)
         self.assertLess(abs(pdb_data.created - time.time()), 2)
-        self.assertIsNone(pdb_data.process_execution)
+        self.assertIsNone(pdb_data.upstream_process_execution)
         self.assertEqual(
             pdb_data.full_path,
             os.path.abspath(os.path.join(self.upload_dir, str(pdb_data.id), "1lol.pdb"))
         )
         self.assertTrue(os.path.exists(pdb_data.full_path))
-        self.assertEqual(pdb_data.downstream.count(), 0)
+        self.assertEqual(pdb_data.downstream_executions.count(), 0)
+        self.assertEqual(pdb_data.downstream_process_executions.count(), 0)
 
         # Create and run pipeline object
         pipeline = Pipeline.objects.create(
@@ -70,15 +71,14 @@ class PdbToMmcifTests(PipelineTest):
             os.path.abspath(os.path.join(self.upload_dir, str(pdb_data.id), "1lol.pdb\n"))
         self.assertEqual(execution.command, command)
         self.assertIn("[main] DEBUG", execution.get_log_text())
-        self.assertEqual(list(execution.upstream.all()), [pdb_data])
-        self.assertEqual(list(pdb_data.downstream.all()), [execution])
+        self.assertEqual(list(execution.upstream_data.all()), [pdb_data])
         self.assertLess(abs(execution.started - start), 5)
         self.assertLess(
             abs(execution.finished - (execution.started + execution.duration)), 2
         )
+        self.assertEqual(execution.process_executions.count(), 1)
 
         # Process execution is fine
-        self.assertEqual(execution.process_executions.count(), 1)
         process_execution = execution.process_executions.first()
         self.assertEqual(process_execution.execution, execution)
         self.assertEqual(process_execution.name, "PDB_TO_MMCIF")
@@ -89,15 +89,18 @@ class PdbToMmcifTests(PipelineTest):
             "CRYSTAL STRUCTURE OF OROTIDINE MONOPHOSPHATE DECARBOXYLASE COMPLEX WITH XMP\n"
         )
         self.assertEqual(len(process_execution.identifier), 9)
+        self.assertEqual(process_execution.downstream_data.count(), 1)
+        self.assertEqual(list(process_execution.upstream_data.all()), [pdb_data])
+        self.assertEqual(list(pdb_data.downstream_process_executions.all()), [process_execution])
 
         # Data output is fine
-        self.assertEqual(process_execution.data.count(), 1)
-        data = process_execution.data.first()
+        data = process_execution.downstream_data.first()
         self.assertEqual(data.filename, "1lol.cif")
         self.assertGreater(data.size, 200_000)
-        self.assertEqual(data.process_execution, process_execution)
+        self.assertEqual(data.upstream_process_execution, process_execution)
         self.assertTrue(os.path.exists(data.full_path))
-        self.assertEqual(data.downstream.count(), 0)
+        self.assertEqual(data.downstream_executions.count(), 0)
+        self.assertEqual(data.downstream_process_executions.count(), 0)
     
 
     def test_can_use_basic_params(self):
@@ -105,7 +108,7 @@ class PdbToMmcifTests(PipelineTest):
         pdb_data = Data.create_from_path(self.files_path("1lol.pdb"))
         self.assertEqual(pdb_data.filename, "1lol.pdb")
         self.assertEqual(pdb_data.size, 322623)
-        self.assertIsNone(pdb_data.process_execution)
+        self.assertIsNone(pdb_data.upstream_process_execution)
         self.assertEqual(
             pdb_data.full_path,
             os.path.abspath(os.path.join(self.upload_dir, str(pdb_data.id), "1lol.pdb"))
@@ -148,12 +151,12 @@ class PdbToMmcifTests(PipelineTest):
         self.assertEqual(len(process_execution.identifier), 9)
 
         # Data output is fine
-        self.assertEqual(process_execution.data.count(), 1)
-        data = process_execution.data.first()
+        self.assertEqual(process_execution.downstream_data.count(), 1)
+        data = process_execution.downstream_data.first()
         self.assertEqual(data.filename, "1lol.cif")
         self.assertEqual(data.filetype, "cif")
         self.assertGreater(data.size, 200_000)
-        self.assertEqual(data.process_execution, process_execution)
+        self.assertEqual(data.upstream_process_execution, process_execution)
         self.assertTrue(os.path.exists(data.full_path))
     
 
@@ -162,7 +165,7 @@ class PdbToMmcifTests(PipelineTest):
         pdb_data = Data.create_from_path(self.files_path("1lol.pdb"))
         self.assertEqual(pdb_data.filename, "1lol.pdb")
         self.assertEqual(pdb_data.size, 322623)
-        self.assertIsNone(pdb_data.process_execution)
+        self.assertIsNone(pdb_data.upstream_process_execution)
         self.assertEqual(
             pdb_data.full_path,
             os.path.abspath(os.path.join(self.upload_dir, str(pdb_data.id), "1lol.pdb"))
@@ -244,7 +247,7 @@ class PdbToMmcifTests(PipelineTest):
         # Upload PDB file
         pdb_data = Data.create_from_path(self.files_path("bad.pdb"))
         self.assertEqual(pdb_data.filename, "bad.pdb")
-        self.assertIsNone(pdb_data.process_execution)
+        self.assertIsNone(pdb_data.upstream_process_execution)
         self.assertTrue(os.path.exists(pdb_data.full_path))
 
         # Create and run pipeline object
@@ -267,8 +270,8 @@ class PdbToMmcifTests(PipelineTest):
             " --pdb=" +\
             os.path.abspath(os.path.join(self.upload_dir, str(pdb_data.id), "bad.pdb\n"))
         self.assertEqual(execution.command, command)
-        self.assertEqual(list(execution.upstream.all()), [pdb_data])
-        self.assertEqual(list(pdb_data.downstream.all()), [execution])
+        self.assertEqual(list(execution.upstream_data.all()), [pdb_data])
+        self.assertEqual(list(pdb_data.downstream_executions.all()), [execution])
         self.assertLess(abs(execution.started - start), 5)
         self.assertIn("[main] DEBUG", execution.get_log_text())
         self.assertLess(
@@ -285,7 +288,7 @@ class PdbToMmcifTests(PipelineTest):
         self.assertEqual(process_execution.stdout, "-")
         self.assertIn("Traceback (most recent call last):", process_execution.stderr)
         self.assertEqual(len(process_execution.identifier), 9)
-        self.assertEqual(process_execution.data.count(), 0)
+        self.assertEqual(process_execution.downstream_data.count(), 0)
     
 
     def test_can_handle_execution_error(self):
@@ -307,7 +310,7 @@ class PdbToMmcifTests(PipelineTest):
         command = "nextflow run " +\
             os.path.abspath(os.path.join(self.pipe_dir, pipeline.path)) + "\n"
         self.assertEqual(execution.command, command)
-        self.assertEqual(list(execution.upstream.all()), [])
+        self.assertEqual(list(execution.upstream_data.all()), [])
         self.assertLess(abs(execution.started - start), 5)
         self.assertLess(
             abs(execution.finished - (execution.started + execution.duration)), 2
@@ -328,13 +331,15 @@ class MmcifReportTests(PipelineTest):
         self.assertEqual(cif_data.filetype, "cif")
         self.assertEqual(cif_data.size, 383351)
         self.assertLess(abs(cif_data.created - time.time()), 2)
-        self.assertIsNone(cif_data.process_execution)
+        self.assertIsNone(cif_data.upstream_process_execution)
         self.assertEqual(
             cif_data.full_path,
             os.path.abspath(os.path.join(self.upload_dir, str(cif_data.id), "1lol.cif"))
         )
         self.assertTrue(os.path.exists(cif_data.full_path))
-        self.assertEqual(cif_data.downstream.count(), 0)
+        self.assertEqual(cif_data.downstream_executions.count(), 0)
+        self.assertEqual(cif_data.downstream_process_executions.count(), 0)
+
 
         # Create and run pipeline object
         pipeline = Pipeline.objects.create(
@@ -356,15 +361,15 @@ class MmcifReportTests(PipelineTest):
             " --mmcif=" +\
             os.path.abspath(os.path.join(self.upload_dir, str(cif_data.id), "1lol.cif\n"))
         self.assertEqual(execution.command, command)
-        self.assertEqual(list(execution.upstream.all()), [cif_data])
-        self.assertEqual(list(cif_data.downstream.all()), [execution])
+        self.assertEqual(list(execution.upstream_data.all()), [cif_data])
+        self.assertEqual(list(cif_data.downstream_executions.all()), [execution])
         self.assertLess(abs(execution.started - start), 5)
         self.assertLess(
             abs(execution.finished - (execution.started + execution.duration)), 2
         )
+        self.assertEqual(execution.process_executions.count(), 1)
 
         # Process execution is fine
-        self.assertEqual(execution.process_executions.count(), 1)
         process_execution = execution.process_executions.first()
         self.assertEqual(process_execution.execution, execution)
         self.assertEqual(process_execution.name, "MMCIF_REPORT")
@@ -372,16 +377,20 @@ class MmcifReportTests(PipelineTest):
         self.assertEqual(process_execution.status, "COMPLETED")
         self.assertEqual(process_execution.stdout, "Saved!\n")
         self.assertEqual(len(process_execution.identifier), 9)
+        self.assertEqual(process_execution.downstream_data.count(), 1)
+        self.assertEqual(list(process_execution.upstream_data.all()), [cif_data])
+        self.assertEqual(list(cif_data.downstream_process_executions.all()), [process_execution])
 
         # Data output is fine
-        self.assertEqual(process_execution.data.count(), 1)
-        data = process_execution.data.first()
+        self.assertEqual(process_execution.downstream_data.count(), 1)
+        data = process_execution.downstream_data.first()
         self.assertEqual(data.filename, "report.txt")
         self.assertEqual(data.filetype, "txt")
         self.assertGreater(data.size, 50)
-        self.assertEqual(data.process_execution, process_execution)
+        self.assertEqual(data.upstream_process_execution, process_execution)
         self.assertTrue(os.path.exists(data.full_path))
-        self.assertEqual(data.downstream.count(), 0)
+        self.assertEqual(data.downstream_executions.count(), 0)
+        self.assertEqual(data.downstream_process_executions.count(), 0)
 
 
 
@@ -396,13 +405,14 @@ class MmcifToChainsTests(PipelineTest):
         self.assertEqual(cif_data.filetype, "cif")
         self.assertEqual(cif_data.size, 383351)
         self.assertLess(abs(cif_data.created - time.time()), 2)
-        self.assertIsNone(cif_data.process_execution)
+        self.assertIsNone(cif_data.upstream_process_execution)
         self.assertEqual(
             cif_data.full_path,
             os.path.abspath(os.path.join(self.upload_dir, str(cif_data.id), "1lol.cif"))
         )
         self.assertTrue(os.path.exists(cif_data.full_path))
-        self.assertEqual(cif_data.downstream.count(), 0)
+        self.assertEqual(cif_data.downstream_executions.count(), 0)
+        self.assertEqual(cif_data.downstream_process_executions.count(), 0)
 
         # Create and run pipeline object
         pipeline = Pipeline.objects.create(
@@ -424,15 +434,15 @@ class MmcifToChainsTests(PipelineTest):
             " --mmcif=" +\
             os.path.abspath(os.path.join(self.upload_dir, str(cif_data.id), "1lol.cif\n"))
         self.assertEqual(execution.command, command)
-        self.assertEqual(list(execution.upstream.all()), [cif_data])
-        self.assertEqual(list(cif_data.downstream.all()), [execution])
+        self.assertEqual(list(execution.upstream_data.all()), [cif_data])
+        self.assertEqual(list(cif_data.downstream_executions.all()), [execution])
         self.assertLess(abs(execution.started - start), 5)
         self.assertLess(
             abs(execution.finished - (execution.started + execution.duration)), 2
         )
+        self.assertEqual(execution.process_executions.count(), 1)
 
         # Process execution is fine
-        self.assertEqual(execution.process_executions.count(), 1)
         process_execution = execution.process_executions.first()
         self.assertEqual(process_execution.execution, execution)
         self.assertEqual(process_execution.name, "MMCIF_TO_CHAINS")
@@ -440,16 +450,19 @@ class MmcifToChainsTests(PipelineTest):
         self.assertEqual(process_execution.status, "COMPLETED")
         self.assertEqual(process_execution.stdout, "<Chain A (204 residues)>\n<Chain B (214 residues)>\n")
         self.assertEqual(len(process_execution.identifier), 9)
+        self.assertEqual(process_execution.downstream_data.count(), 2)
+        self.assertEqual(list(process_execution.upstream_data.all()), [cif_data])
+        self.assertEqual(list(cif_data.downstream_process_executions.all()), [process_execution])
 
         # Data outputs are fine
-        self.assertEqual(process_execution.data.count(), 2)
-        for data in process_execution.data.all():
+        for data in process_execution.downstream_data.all():
             self.assertIn(data.filename, ["chain_A.cif", "chain_B.cif"])
             self.assertEqual(data.filetype, "cif")
             self.assertGreater(data.size, 100_000)
-            self.assertEqual(data.process_execution, process_execution)
+            self.assertEqual(data.upstream_process_execution, process_execution)
             self.assertTrue(os.path.exists(data.full_path))
-            self.assertEqual(data.downstream.count(), 0)
+            self.assertEqual(data.downstream_executions.count(), 0)
+            self.assertEqual(data.downstream_process_executions.count(), 0)
 
 
 
@@ -462,13 +475,14 @@ class ConvertAndReportTests(PipelineTest):
         self.assertEqual(pdb_data.filetype, "pdb")
         self.assertEqual(pdb_data.size, 322623)
         self.assertLess(abs(pdb_data.created - time.time()), 2)
-        self.assertIsNone(pdb_data.process_execution)
+        self.assertIsNone(pdb_data.upstream_process_execution)
         self.assertEqual(
             pdb_data.full_path,
             os.path.abspath(os.path.join(self.upload_dir, str(pdb_data.id), "1lol.pdb"))
         )
         self.assertTrue(os.path.exists(pdb_data.full_path))
-        self.assertEqual(pdb_data.downstream.count(), 0)
+        self.assertEqual(pdb_data.downstream_executions.count(), 0)
+        self.assertEqual(pdb_data.downstream_process_executions.count(), 0)
 
         # Create and run pipeline object
         pipeline = Pipeline.objects.create(
@@ -490,8 +504,8 @@ class ConvertAndReportTests(PipelineTest):
             " --pdb=" +\
             os.path.abspath(os.path.join(self.upload_dir, str(pdb_data.id), "1lol.pdb\n"))
         self.assertEqual(execution.command, command)
-        self.assertEqual(list(execution.upstream.all()), [pdb_data])
-        self.assertEqual(list(pdb_data.downstream.all()), [execution])
+        self.assertEqual(list(execution.upstream_data.all()), [pdb_data])
+        self.assertEqual(list(pdb_data.downstream_executions.all()), [execution])
         self.assertLess(abs(execution.started - start), 5)
         self.assertLess(
             abs(execution.finished - (execution.started + execution.duration)), 2
@@ -509,15 +523,19 @@ class ConvertAndReportTests(PipelineTest):
             "CRYSTAL STRUCTURE OF OROTIDINE MONOPHOSPHATE DECARBOXYLASE COMPLEX WITH XMP\n"
         )
         self.assertEqual(len(process_execution.identifier), 9)
+        self.assertEqual(list(process_execution.upstream_data.all()), [pdb_data])
+        self.assertEqual(list(pdb_data.downstream_process_executions.all()), [process_execution])
+        self.assertEqual(process_execution.downstream_data.count(), 1)
 
         # Data output 1 is fine
-        self.assertEqual(process_execution.data.count(), 1)
-        data = process_execution.data.first()
+        data = process_execution.downstream_data.first()
         self.assertEqual(data.filename, "1lol.cif")
         self.assertEqual(data.filetype, "cif")
         self.assertGreater(data.size, 200_000)
-        self.assertEqual(data.process_execution, process_execution)
+        self.assertEqual(data.upstream_process_execution, process_execution)
         self.assertTrue(os.path.exists(data.full_path))
+        self.assertEqual(data.downstream_executions.count(), 0)
+        self.assertEqual(data.downstream_process_executions.count(), 1)
 
         # Process execution 2 is fine
         process_execution = execution.process_executions.last()
@@ -527,16 +545,19 @@ class ConvertAndReportTests(PipelineTest):
         self.assertEqual(process_execution.status, "COMPLETED")
         self.assertEqual(process_execution.stdout, "Saved!\n")
         self.assertEqual(len(process_execution.identifier), 9)
+        self.assertEqual(list(process_execution.upstream_data.all()), [data])
+        self.assertEqual(list(data.downstream_process_executions.all()), [process_execution])
+        self.assertEqual(process_execution.downstream_data.count(), 1)
 
         # Data output 2 is fine
-        self.assertEqual(process_execution.data.count(), 1)
-        data = process_execution.data.first()
+        data = process_execution.downstream_data.first()
         self.assertEqual(data.filename, "report.txt")
         self.assertEqual(data.filetype, "txt")
         self.assertGreater(data.size, 20)
-        self.assertEqual(data.process_execution, process_execution)
+        self.assertEqual(data.upstream_process_execution, process_execution)
         self.assertTrue(os.path.exists(data.full_path))
-        self.assertEqual(data.downstream.count(), 0)
+        self.assertEqual(data.downstream_executions.count(), 0)
+        self.assertEqual(data.downstream_process_executions.count(), 0)
 
 
 
@@ -551,13 +572,14 @@ class SplitAndReportTests(PipelineTest):
         self.assertEqual(cif_data.filetype, "cif")
         self.assertEqual(cif_data.size, 383351)
         self.assertLess(abs(cif_data.created - time.time()), 2)
-        self.assertIsNone(cif_data.process_execution)
+        self.assertIsNone(cif_data.upstream_process_execution)
         self.assertEqual(
             cif_data.full_path,
             os.path.abspath(os.path.join(self.upload_dir, str(cif_data.id), "1lol.cif"))
         )
         self.assertTrue(os.path.exists(cif_data.full_path))
-        self.assertEqual(cif_data.downstream.count(), 0)
+        self.assertEqual(cif_data.downstream_executions.count(), 0)
+        self.assertEqual(cif_data.downstream_process_executions.count(), 0)
 
         # Create and run pipeline object
         pipeline = Pipeline.objects.create(
@@ -579,8 +601,8 @@ class SplitAndReportTests(PipelineTest):
             " --mmcif=" +\
             os.path.abspath(os.path.join(self.upload_dir, str(cif_data.id), "1lol.cif\n"))
         self.assertEqual(execution.command, command)
-        self.assertEqual(list(execution.upstream.all()), [cif_data])
-        self.assertEqual(list(cif_data.downstream.all()), [execution])
+        self.assertEqual(list(execution.upstream_data.all()), [cif_data])
+        self.assertEqual(list(cif_data.downstream_executions.all()), [execution])
         self.assertLess(abs(execution.started - start), 5)
         self.assertLess(
             abs(execution.finished - (execution.started + execution.duration)), 2
@@ -595,16 +617,21 @@ class SplitAndReportTests(PipelineTest):
         self.assertEqual(process_execution.status, "COMPLETED")
         self.assertEqual(process_execution.stdout, "<Chain A (204 residues)>\n<Chain B (214 residues)>\n")
         self.assertEqual(len(process_execution.identifier), 9)
+        self.assertEqual(list(process_execution.upstream_data.all()), [cif_data])
+        self.assertEqual(list(cif_data.downstream_process_executions.all()), [process_execution])
+        self.assertEqual(process_execution.downstream_data.count(), 2)
 
         # Data output 1/2 is fine
-        self.assertEqual(process_execution.data.count(), 2)
-        for data in process_execution.data.all():
+        chain_data = []
+        for data in process_execution.downstream_data.all():
+            chain_data.append(data)
             self.assertIn(data.filename, ["chain_A.cif", "chain_B.cif"])
             self.assertEqual(data.filetype, "cif")
             self.assertGreater(data.size, 100_000)
-            self.assertEqual(data.process_execution, process_execution)
+            self.assertEqual(data.upstream_process_execution, process_execution)
             self.assertTrue(os.path.exists(data.full_path))
-            self.assertEqual(data.downstream.count(), 0)
+            self.assertEqual(data.downstream_executions.count(), 0)
+            self.assertEqual(data.downstream_process_executions.count(), 1)
 
         # Process execution 2 is fine
         process_execution = execution.process_executions.all()[1]
@@ -614,16 +641,19 @@ class SplitAndReportTests(PipelineTest):
         self.assertEqual(process_execution.status, "COMPLETED")
         self.assertEqual(process_execution.stdout, "Saved!\n")
         self.assertEqual(len(process_execution.identifier), 9)
+        self.assertEqual(process_execution.upstream_data.count(), 1)
+        self.assertIn(process_execution.upstream_data.first(), chain_data)
+        self.assertEqual(process_execution.downstream_data.count(), 1)
 
         # Data output 3 is fine
-        self.assertEqual(process_execution.data.count(), 1)
-        data = process_execution.data.first()
+        data = process_execution.downstream_data.first()
         self.assertEqual(data.filename, "report.txt")
         self.assertEqual(data.filetype, "txt")
         self.assertGreater(data.size, 20)
-        self.assertEqual(data.process_execution, process_execution)
+        self.assertEqual(data.upstream_process_execution, process_execution)
         self.assertTrue(os.path.exists(data.full_path))
-        self.assertEqual(data.downstream.count(), 0)
+        self.assertEqual(data.downstream_executions.count(), 0)
+        self.assertEqual(data.downstream_process_executions.count(), 0)
 
         # Process execution 3 is fine
         process_execution = execution.process_executions.last()
@@ -633,16 +663,19 @@ class SplitAndReportTests(PipelineTest):
         self.assertEqual(process_execution.status, "COMPLETED")
         self.assertEqual(process_execution.stdout, "Saved!\n")
         self.assertEqual(len(process_execution.identifier), 9)
+        self.assertEqual(process_execution.upstream_data.count(), 1)
+        self.assertIn(process_execution.upstream_data.first(), chain_data)
+        self.assertEqual(process_execution.downstream_data.count(), 1)
 
         # Data output 4 is fine
-        self.assertEqual(process_execution.data.count(), 1)
-        data = process_execution.data.first()
+        data = process_execution.downstream_data.first()
         self.assertEqual(data.filename, "report.txt")
         self.assertEqual(data.filetype, "txt")
         self.assertGreater(data.size, 20)
-        self.assertEqual(data.process_execution, process_execution)
+        self.assertEqual(data.upstream_process_execution, process_execution)
         self.assertTrue(os.path.exists(data.full_path))
-        self.assertEqual(data.downstream.count(), 0)
+        self.assertEqual(data.downstream_executions.count(), 0)
+        self.assertEqual(data.downstream_process_executions.count(), 0)
 
 
 
@@ -655,13 +688,14 @@ class FullWorkflowTests(PipelineTest):
         self.assertEqual(pdb_data.filetype, "pdb")
         self.assertEqual(pdb_data.size, 322623)
         self.assertLess(abs(pdb_data.created - time.time()), 2)
-        self.assertIsNone(pdb_data.process_execution)
+        self.assertIsNone(pdb_data.upstream_process_execution)
         self.assertEqual(
             pdb_data.full_path,
             os.path.abspath(os.path.join(self.upload_dir, str(pdb_data.id), "1lol.pdb"))
         )
         self.assertTrue(os.path.exists(pdb_data.full_path))
-        self.assertEqual(pdb_data.downstream.count(), 0)
+        self.assertEqual(pdb_data.downstream_executions.count(), 0)
+        self.assertEqual(pdb_data.downstream_process_executions.count(), 0)
 
         # Create and run pipeline object
         pipeline = Pipeline.objects.create(
@@ -683,8 +717,8 @@ class FullWorkflowTests(PipelineTest):
             " --pdb=" +\
             os.path.abspath(os.path.join(self.upload_dir, str(pdb_data.id), "1lol.pdb\n"))
         self.assertEqual(execution.command, command)
-        self.assertEqual(list(execution.upstream.all()), [pdb_data])
-        self.assertEqual(list(pdb_data.downstream.all()), [execution])
+        self.assertEqual(list(execution.upstream_data.all()), [pdb_data])
+        self.assertEqual(list(pdb_data.downstream_executions.all()), [execution])
         self.assertLess(abs(execution.started - start), 5)
         self.assertLess(
             abs(execution.finished - (execution.started + execution.duration)), 2
@@ -714,11 +748,17 @@ class FullWorkflowTests(PipelineTest):
             self.assertEqual(len(process_execution.identifier), 9)
         
             # Data objects are ok
-            for data in process_execution.data.all():
-                self.assertEqual(data.process_execution, process_execution)
+            for data in process_execution.downstream_data.all():
+                self.assertEqual(data.upstream_process_execution, process_execution)
                 self.assertIn(data.filename, [
                     "report.txt", "1lol.cif", "chain_A.cif", "chain_B.cif"
                 ])
                 self.assertGreater(data.size, 20)
                 self.assertTrue(os.path.exists(data.full_path))
-                self.assertEqual(data.downstream.count(), 0)
+                self.assertEqual(data.downstream_executions.count(), 0)
+                if data.filename == "report.txt":
+                    self.assertEqual(data.downstream_process_executions.count(), 0)
+                elif data.filename == "1lol.cif":
+                    self.assertEqual(data.downstream_process_executions.count(), 2)
+                else:
+                    self.assertEqual(data.downstream_process_executions.count(), 1)

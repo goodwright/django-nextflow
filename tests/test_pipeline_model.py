@@ -92,5 +92,13 @@ class ParamCreationTests(TestCase):
 
 
 class PipelineRunningTests(TestCase):
-    pass
-    #TODO
+
+    @patch("django_nextflow.models.Pipeline.create_pipeline")
+    @patch("django_nextflow.models.Execution.prepare_directory")
+    @patch("django_nextflow.models.Pipeline.create_params")
+    @patch("django_nextflow.models.Execution.create_from_object")
+    @patch("django_nextflow.models.ProcessExecution.create_from_object")
+    @patch("django_nextflow.models.ProcessExecution.create_downstream_data_objects")
+    @patch("django_nextflow.models.ProcessExecution.create_upstream_data_objects")
+    def test(self, *mocks):
+        pass
