@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, Mock, PropertyMock, patch
 from django.test import TestCase
 from django.test.utils import override_settings
 from mixer.backend.django import mixer
-from django_nextflow.models import Execution, Pipeline, Data
+from django_nextflow.models import Execution, Pipeline, Data, ProcessExecution
 
 class PipelineCreationTests(TestCase):
 
@@ -93,6 +93,7 @@ class ParamCreationTests(TestCase):
 
 class PipelineRunningTests(TestCase):
 
+    @override_settings(NEXTFLOW_DATA_ROOT="/data")
     @patch("django_nextflow.models.Pipeline.create_pipeline")
     @patch("django_nextflow.models.Execution.prepare_directory")
     @patch("django_nextflow.models.Pipeline.create_params")
@@ -100,5 +101,27 @@ class PipelineRunningTests(TestCase):
     @patch("django_nextflow.models.ProcessExecution.create_from_object")
     @patch("django_nextflow.models.ProcessExecution.create_downstream_data_objects")
     @patch("django_nextflow.models.ProcessExecution.create_upstream_data_objects")
-    def test(self, *mocks):
-        pass
+    def test_can_run(self, *mocks):
+        nf_pipeline = Mock()
+        nf_execution = Mock()
+        nf_procex1, nf_procex2 = Mock(), Mock()
+        execution = mixer.blend(Execution)
+        procex1 = mixer.blend(ProcessExecution, execution=execution)
+        procex2 = mixer.blend(ProcessExecution, execution=execution)
+        nf_execution.process_executions = [nf_procex1, nf_procex2]
+        nf_pipeline.run.return_value = nf_execution
+        mocks[-1].return_value = nf_pipeline
+        mocks[-2].return_value = "1000"
+        mocks[-3].return_value = {1: 2, 3: 4}, [mixer.blend(Data), mixer.blend(Data)]
+        mocks[-4].return_value = execution
+        mocks[-5].side_effect = [procex1, procex2]
+        pipeline = mixer.blend(Pipeline)
+        pipeline.run(params={"param1": "X", "param2": "Y"}, data_params={"param3": 100})
+        mocks[-1].assert_called_with()
+        mocks[-2].assert_called_with()
+        mocks[-3].assert_called_with({"param1": "X", "param2": "Y"}, {"param3": 100})
+        mocks[-4].assert_called_with(nf_execution, "1000", pipeline)
+        self.assertEqual(set(execution.upstream_data.all()), set(Data.objects.all()))
+        mocks[-5].assert_any_call(nf_procex1, execution)
+        self.assertEqual(mocks[-6].call_count, 2)
+        self.assertEqual(mocks[-7].call_count, 2)
