@@ -55,6 +55,7 @@ nf-core style) and a config file to use when running it:
 ```python
 pipeline = Pipeline.objects.create(
     path="workflows/main.nf",
+    description="Some useful pipeline.",
     schema_path="main.json",
     config_path="nextflow.config"
 )
@@ -108,11 +109,19 @@ The file will be copied to `NEXTFLOW_UPLOADS_ROOT` in this case.
 
 ## Changelog
 
+### 0.2
+
+*14th November, 2021*
+
+- Pipelines now have description fields.
+- Data objects now have creation time fields.
+- Added upstream data objects as well as downstream to process executions. 
+
 ### 0.1.1
 
 *3rd November, 2021*
 
-- Fix duration string parsing.
+- Fixed duration string parsing.
 
 ### 0.1
 
