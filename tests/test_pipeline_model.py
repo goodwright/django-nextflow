@@ -88,6 +88,18 @@ class ParamCreationTests(TestCase):
         params, data = pipeline.create_params({"1": "2"}, {"A": 1, "B": 2})
         self.assertEqual(params, {"1": "2", "A": "/path1"})
         self.assertEqual(data, [data1])
+    
+
+    @patch("django_nextflow.models.Data.full_path", new_callable=PropertyMock)
+    def test_can_handle_list_of_data_params(self, mock_path):
+        mock_path.side_effect = ["/path1", "/path2", "/path4"]
+        pipeline = mixer.blend(Pipeline)
+        data1 = mixer.blend(Data, id=1)
+        data2 = mixer.blend(Data, id=2)
+        data4 = mixer.blend(Data, id=4)
+        params, data = pipeline.create_params({"1": "2"}, {"A": 1, "B": [2, 3, 4]})
+        self.assertEqual(params, {"1": "2", "A": "/path1", "B": "/path2,/path4"})
+        self.assertEqual(data, [data1, data2, data4])
 
 
 

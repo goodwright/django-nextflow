@@ -48,12 +48,18 @@ class Pipeline(models.Model):
         params = {**(params if params else {})}
         data_objects = []
         if data_params:
-            for name, data_id in data_params.items():
-                data = Data.objects.filter(id=data_id).first()
-                if not data: continue
-                path = data.full_path
-                params[name] = path
-                data_objects.append(data)
+            for name, value in data_params.items():
+                if isinstance(value, list):
+                    datas = [Data.objects.filter(id=id).first() for id in value]
+                    paths = [d.full_path for d in datas if d]
+                    params[name] = ",".join(paths)
+                    data_objects += filter(bool, datas)
+                else:
+                    data = Data.objects.filter(id=value).first()
+                    if not data: continue
+                    path = data.full_path
+                    params[name] = path
+                    data_objects.append(data)
         return params, data_objects
 
 
