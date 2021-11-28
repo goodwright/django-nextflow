@@ -40,5 +40,9 @@ class FileExtensionTests(TestCase):
         self.assertEqual(get_file_extension("file.txt"), "txt")
     
 
+    def test_can_get_gz_extension(self):
+        self.assertEqual(get_file_extension("file.txt.gz"), "txt.gz")
+    
+
     def test_can_get_no_extension(self):
         self.assertEqual(get_file_extension("file"), "")

@@ -27,4 +27,6 @@ def parse_duration(duration):
 def get_file_extension(filename):
     """Gets the file extension from some filename."""
     
+    if filename.endswith(".gz"):
+        return ".".join(filename.split(".")[-2:])
     return filename.split(".")[-1] if "." in filename else ""
