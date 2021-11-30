@@ -40,17 +40,98 @@ class ProcessExecutionCreationFromObject(TestCase):
 
 
 
+@override_settings(NEXTFLOW_DATA_ROOT="/data")
+@override_settings(NEXTFLOW_PUBLISH_DIR="results")
 class PublishDirTests(TestCase):
 
-    @override_settings(NEXTFLOW_DATA_ROOT="/data")
-    @override_settings(NEXTFLOW_PUBLISH_DIR="results")
-    def test_can_get_publish_dir(self):
-        execution = mixer.blend(ProcessExecution, name="PROC", execution=mixer.blend(
-            Execution, id=1
+    def setUp(self):
+        self.execution = mixer.blend(
+            ProcessExecution, name="PROC (2)", process_name="PROC",
+            execution=mixer.blend(Execution, id=1)
+        )
+        self.patch1 = patch("os.path.exists")
+        self.mock_exists = self.patch1.start()
+        self.mock_exists.return_value = True
+        self.patch2 = patch("os.listdir")
+        self.mock_listdir = self.patch2.start()
+        self.patch3 = patch("django_nextflow.models.ProcessExecution.work_dir", new_callable=PropertyMock)
+        self.mock_work = self.patch3.start()
+        self.mock_work.return_value = "/work"
+
+    
+
+    def tearDown(self):
+        self.patch1.stop()
+        self.patch2.stop()
+        self.patch3.stop()
+
+
+    def test_can_get_publish_dir_via_file_match(self):
+        self.mock_listdir.side_effect = [
+            ["PROC1", "PROC2", "PROC3"],
+            ["myfile1.txt", "myfile2.txt", "myfile3.txt"],
+            ["myfile1.txt", "myfile4.txt"],
+            ["myfile2.txt", "myfile3.txt"],
+            ["myfile5.txt"],
+        ]
+        self.assertEqual(self.execution.publish_dir, os.path.join(
+            "/data", "1", "results", "PROC2"
         ))
-        self.assertEqual(execution.publish_dir, os.path.join(
-            "/data", "1", "results", "PROC"
+        self.mock_exists.assert_called_with(os.path.join("/data", "1", "results"))
+        self.assertEqual([c[0][0] for c in self.mock_listdir.call_args_list], [
+            os.path.join("/data", "1", "results"),
+            "/work",
+            os.path.join("/data", "1", "results", "PROC1"),
+            os.path.join("/data", "1", "results", "PROC2"),
+            os.path.join("/data", "1", "results", "PROC3"),
+        ])
+    
+
+    def test_can_get_publish_dir_via_process_name_match(self):
+        self.mock_listdir.side_effect = [
+            ["PROC (1)", "PROC (2)", "PROC (3)"],
+            ["myfile1.txt", "myfile2.txt", "myfile3.txt"],
+            ["myfile1.txt", "myfile4.txt"],
+            ["myfile2.txt", "myfile3.txt"],
+            ["myfile2.txt"],
+        ]
+        self.assertEqual(self.execution.publish_dir, os.path.join(
+            "/data", "1", "results", "PROC (2)"
         ))
+        self.mock_exists.assert_called_with(os.path.join("/data", "1", "results"))
+        self.assertEqual([c[0][0] for c in self.mock_listdir.call_args_list], [
+            os.path.join("/data", "1", "results"),
+            "/work",
+            os.path.join("/data", "1", "results", "PROC (1)"),
+            os.path.join("/data", "1", "results", "PROC (2)"),
+            os.path.join("/data", "1", "results", "PROC (3)"),
+        ])
+    
+
+    def test_can_get_publish_dir_via_name_match(self):
+        self.mock_listdir.side_effect = [
+            ["PROC1", "PROC2", "PROC3"],
+            ["myfile1.txt", "myfile2.txt", "myfile3.txt"],
+            ["myfile8.txt", "myfile4.txt"],
+            ["myfile2.txt", "myfile3.txt"],
+            ["myfile9.txt"],
+        ]
+        self.assertEqual(self.execution.publish_dir, os.path.join(
+            "/data", "1", "results", "PROC2"
+        ))
+        self.mock_exists.assert_called_with(os.path.join("/data", "1", "results"))
+        self.assertEqual([c[0][0] for c in self.mock_listdir.call_args_list], [
+            os.path.join("/data", "1", "results"),
+            "/work",
+            os.path.join("/data", "1", "results", "PROC1"),
+            os.path.join("/data", "1", "results", "PROC2"),
+            os.path.join("/data", "1", "results", "PROC3"),
+        ])
+    
+
+    def test_can_handle_no_match(self):
+        self.mock_exists.return_value = False
+        self.assertIsNone(self.execution.publish_dir)
 
 
 
@@ -96,6 +177,16 @@ class DownstreamDataCreationTests(TestCase):
     def test_can_handle_missing_location(self, mock_list, mock_dir):
         mock_dir.return_value = "/path/results"
         mock_list.side_effect = FileNotFoundError
+        execution = mixer.blend(ProcessExecution)
+        execution.create_downstream_data_objects()
+        self.assertEqual(execution.downstream_data.count(), 0)
+    
+
+    @override_settings(NEXTFLOW_DATA_ROOT="/data")
+    @patch("django_nextflow.models.ProcessExecution.publish_dir", new_callable=PropertyMock())
+    @patch("os.listdir")
+    def test_can_handle_no_publish_dir(self, mock_list, mock_dir):
+        mock_dir.return_value = None
         execution = mixer.blend(ProcessExecution)
         execution.create_downstream_data_objects()
         self.assertEqual(execution.downstream_data.count(), 0)

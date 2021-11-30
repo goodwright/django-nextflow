@@ -183,10 +183,24 @@ class ProcessExecution(models.Model):
     def publish_dir(self):
         """The location where the process would have published its files."""
 
-        return os.path.join(
+        results_dir = os.path.join(
             settings.NEXTFLOW_DATA_ROOT, str(self.execution.id),
-            settings.NEXTFLOW_PUBLISH_DIR, self.name
+            settings.NEXTFLOW_PUBLISH_DIR
         )
+        if os.path.exists(results_dir):
+            possibles = os.listdir(results_dir)
+            work_dir_contents = set(os.listdir(self.work_dir))
+            subsets = [d for d in possibles if set(os.listdir(os.path.join(
+                results_dir, d
+            ))).issubset(work_dir_contents)]
+            if len(subsets) == 1:
+                return os.path.join(results_dir, subsets[0])
+            matches = [d for d in possibles if d.lower() == self.process_name.lower()]
+            if len(matches) == 1:
+                return os.path.join(results_dir, matches[0])
+            matches = [d for d in possibles if d.lower() == self.name.lower()]
+            if len(matches) == 1:
+                return os.path.join(results_dir, matches[0])
     
 
     @property
@@ -206,15 +220,16 @@ class ProcessExecution(models.Model):
         from them."""
 
         location = self.publish_dir
-        try:
-            for filename in os.listdir(location):
-                Data.objects.create(
-                    filename=filename,
-                    filetype=get_file_extension(filename),
-                    size=os.path.getsize(os.path.join(location, filename)),
-                    upstream_process_execution=self
-                )
-        except FileNotFoundError: pass
+        if location:
+            try:
+                for filename in os.listdir(location):
+                    Data.objects.create(
+                        filename=filename,
+                        filetype=get_file_extension(filename),
+                        size=os.path.getsize(os.path.join(location, filename)),
+                        upstream_process_execution=self
+                    )
+            except FileNotFoundError: pass
     
 
     def create_upstream_data_objects(self):
