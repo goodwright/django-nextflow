@@ -63,7 +63,7 @@ class Pipeline(models.Model):
         return params, data_objects
 
 
-    def run(self, params=None, data_params=None):
+    def run(self, params=None, data_params=None, profile=None):
         """Run the pipeline with a set of parameters."""
         
         pipeline = self.create_pipeline()
@@ -71,7 +71,7 @@ class Pipeline(models.Model):
         params, data_objects = self.create_params(params or {}, data_params or {})
         execution = pipeline.run(
             location=os.path.join(settings.NEXTFLOW_DATA_ROOT, str(id)),
-            params=params
+            params=params, profile=profile
         )
         execution_model = Execution.create_from_object(execution, id, self)
         for data in data_objects: execution_model.upstream_data.add(data)

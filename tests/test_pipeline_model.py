@@ -128,10 +128,11 @@ class PipelineRunningTests(TestCase):
         mocks[-4].return_value = execution
         mocks[-5].side_effect = [procex1, procex2]
         pipeline = mixer.blend(Pipeline)
-        pipeline.run(params={"param1": "X", "param2": "Y"}, data_params={"param3": 100})
+        pipeline.run(params={"param1": "X", "param2": "Y"}, data_params={"param3": 100}, profile=["X"])
         mocks[-1].assert_called_with()
         mocks[-2].assert_called_with()
         mocks[-3].assert_called_with({"param1": "X", "param2": "Y"}, {"param3": 100})
+        nf_pipeline.run.assert_called_with(location="/data/1000", params={1: 2, 3: 4}, profile=["X"])
         mocks[-4].assert_called_with(nf_execution, "1000", pipeline)
         self.assertEqual(set(execution.upstream_data.all()), set(Data.objects.all()))
         mocks[-5].assert_any_call(nf_procex1, execution)
