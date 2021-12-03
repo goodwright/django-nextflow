@@ -115,11 +115,12 @@ class Execution(models.Model):
         """Gets the text of the execution's nextflow log file. This requires a
         disk read, so is its own method."""
 
-        execution = nextflow.Execution(
-            location=os.path.join(settings.NEXTFLOW_DATA_ROOT, str(self.id)),
-            id=self.identifier
-        )
-        return execution.log
+        try:
+            with open(os.path.join(
+                settings.NEXTFLOW_DATA_ROOT, str(self.id), ".nextflow.log"
+            )) as f:
+                return f.read()
+        except FileNotFoundError: return None
     
 
     @staticmethod

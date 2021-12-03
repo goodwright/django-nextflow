@@ -1,5 +1,5 @@
 import os
-from unittest.mock import patch, Mock
+from unittest.mock import mock_open, patch, Mock
 from mixer.backend.django import mixer
 from django.test import TestCase
 from django.test.utils import override_settings
@@ -30,17 +30,14 @@ class ExecutionFinishedTests(TestCase):
 class ExecutionLogTests(TestCase):
 
     @override_settings(NEXTFLOW_DATA_ROOT="/home/data")
-    @patch("nextflow.Execution")
-    @patch("nextflow.Execution.log")
-    def test_can_get_log(self, mock_log, mock_Execution):
-        mock_Execution.return_value = Mock(log="logtext")
-        mock_log.return_value = "logtext"
-        execution = mixer.blend(Execution, identifier="good_run")
+    @patch("builtins.open", new_callable=mock_open)
+    def test_can_get_log(self, mock_open):
+        mock_open.return_value.__enter__.return_value.read.return_value = "logtext"
+        execution = mixer.blend(Execution)
         log = execution.get_log_text()
         self.assertEqual(log, "logtext")
-        mock_Execution.assert_called_with(
-            location=os.path.join("/home/data", str(execution.id)),
-            id="good_run"
+        mock_open.assert_called_with(
+            os.path.join("/home/data", str(execution.id), ".nextflow.log"),
         )
 
 
