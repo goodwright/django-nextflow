@@ -158,6 +158,8 @@ class ProcessExecution(models.Model):
     status = models.CharField(max_length=20)
     stdout = models.TextField()
     stderr = models.TextField()
+    started = models.FloatField()
+    duration = models.FloatField()
     execution = models.ForeignKey(Execution, related_name="process_executions", on_delete=models.CASCADE)
 
     def __str__(self):
@@ -176,9 +178,18 @@ class ProcessExecution(models.Model):
             status=process_execution.status,
             stdout=process_execution.stdout,
             stderr=process_execution.stderr,
+            started=parse_datetime(process_execution.start),
+            duration=parse_duration(process_execution.duration),
             execution=execution
         )
     
+
+    @property
+    def finished(self):
+        """The timestamp for when the execution stopped."""
+
+        return self.started + self.duration
+
 
     @property
     def publish_dir(self):

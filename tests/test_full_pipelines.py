@@ -92,6 +92,10 @@ class PdbToMmcifTests(PipelineTest):
         self.assertEqual(process_execution.downstream_data.count(), 1)
         self.assertEqual(list(process_execution.upstream_data.all()), [pdb_data])
         self.assertEqual(list(pdb_data.downstream_process_executions.all()), [process_execution])
+        self.assertLess(abs(process_execution.started - start), 5)
+        self.assertLess(
+            abs(process_execution.finished - (process_execution.started + process_execution.duration)), 2
+        )
 
         # Data output is fine
         data = process_execution.downstream_data.first()
@@ -149,6 +153,10 @@ class PdbToMmcifTests(PipelineTest):
         self.assertEqual(process_execution.status, "COMPLETED")
         self.assertEqual(process_execution.stdout, "-")
         self.assertEqual(len(process_execution.identifier), 9)
+        self.assertLess(abs(process_execution.started - start), 5)
+        self.assertLess(
+            abs(process_execution.finished - (process_execution.started + process_execution.duration)), 2
+        )
 
         # Data output is fine
         self.assertEqual(process_execution.downstream_data.count(), 1)
@@ -289,6 +297,10 @@ class PdbToMmcifTests(PipelineTest):
         self.assertIn("Traceback (most recent call last):", process_execution.stderr)
         self.assertEqual(len(process_execution.identifier), 9)
         self.assertEqual(process_execution.downstream_data.count(), 0)
+        self.assertLess(abs(process_execution.started - start), 5)
+        self.assertLess(
+            abs(process_execution.finished - (process_execution.started + process_execution.duration)), 2
+        )
     
 
     def test_can_handle_execution_error(self):
@@ -380,6 +392,10 @@ class MmcifReportTests(PipelineTest):
         self.assertEqual(process_execution.downstream_data.count(), 1)
         self.assertEqual(list(process_execution.upstream_data.all()), [cif_data])
         self.assertEqual(list(cif_data.downstream_process_executions.all()), [process_execution])
+        self.assertLess(abs(process_execution.started - start), 5)
+        self.assertLess(
+            abs(process_execution.finished - (process_execution.started + process_execution.duration)), 2
+        )
 
         # Data output is fine
         self.assertEqual(process_execution.downstream_data.count(), 1)
@@ -453,6 +469,10 @@ class MmcifToChainsTests(PipelineTest):
         self.assertEqual(process_execution.downstream_data.count(), 2)
         self.assertEqual(list(process_execution.upstream_data.all()), [cif_data])
         self.assertEqual(list(cif_data.downstream_process_executions.all()), [process_execution])
+        self.assertLess(abs(process_execution.started - start), 5)
+        self.assertLess(
+            abs(process_execution.finished - (process_execution.started + process_execution.duration)), 2
+        )
 
         # Data outputs are fine
         for data in process_execution.downstream_data.all():
@@ -526,6 +546,10 @@ class ConvertAndReportTests(PipelineTest):
         self.assertEqual(list(process_execution.upstream_data.all()), [pdb_data])
         self.assertEqual(list(pdb_data.downstream_process_executions.all()), [process_execution])
         self.assertEqual(process_execution.downstream_data.count(), 1)
+        self.assertLess(abs(process_execution.started - start), 5)
+        self.assertLess(
+            abs(process_execution.finished - (process_execution.started + process_execution.duration)), 2
+        )
 
         # Data output 1 is fine
         data = process_execution.downstream_data.first()
@@ -548,6 +572,10 @@ class ConvertAndReportTests(PipelineTest):
         self.assertEqual(list(process_execution.upstream_data.all()), [data])
         self.assertEqual(list(data.downstream_process_executions.all()), [process_execution])
         self.assertEqual(process_execution.downstream_data.count(), 1)
+        self.assertLess(abs(process_execution.started - start), 5)
+        self.assertLess(
+            abs(process_execution.finished - (process_execution.started + process_execution.duration)), 2
+        )
 
         # Data output 2 is fine
         data = process_execution.downstream_data.first()
@@ -620,6 +648,10 @@ class SplitAndReportTests(PipelineTest):
         self.assertEqual(list(process_execution.upstream_data.all()), [cif_data])
         self.assertEqual(list(cif_data.downstream_process_executions.all()), [process_execution])
         self.assertEqual(process_execution.downstream_data.count(), 2)
+        self.assertLess(abs(process_execution.started - start), 5)
+        self.assertLess(
+            abs(process_execution.finished - (process_execution.started + process_execution.duration)), 2
+        )
 
         # Data output 1/2 is fine
         chain_data = []
@@ -644,6 +676,10 @@ class SplitAndReportTests(PipelineTest):
         self.assertEqual(process_execution.upstream_data.count(), 1)
         self.assertIn(process_execution.upstream_data.first(), chain_data)
         self.assertEqual(process_execution.downstream_data.count(), 1)
+        self.assertLess(abs(process_execution.started - start), 5)
+        self.assertLess(
+            abs(process_execution.finished - (process_execution.started + process_execution.duration)), 2
+        )
 
         # Data output 3 is fine
         data = process_execution.downstream_data.first()
@@ -666,6 +702,10 @@ class SplitAndReportTests(PipelineTest):
         self.assertEqual(process_execution.upstream_data.count(), 1)
         self.assertIn(process_execution.upstream_data.first(), chain_data)
         self.assertEqual(process_execution.downstream_data.count(), 1)
+        self.assertLess(abs(process_execution.started - start), 5)
+        self.assertLess(
+            abs(process_execution.finished - (process_execution.started + process_execution.duration)), 2
+        )
 
         # Data output 4 is fine
         data = process_execution.downstream_data.first()

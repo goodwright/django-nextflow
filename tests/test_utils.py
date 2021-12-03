@@ -6,6 +6,10 @@ class DatetimeParsingTests(TestCase):
 
     def test_can_parse_datetime(self):
         self.assertEqual(parse_datetime("2020-01-01 12:00:00"), 1577901600)
+    
+
+    def test_can_parse_datetime_with_extra_stuff(self):
+        self.assertEqual(parse_datetime("2020-01-01 12:00:00.234234"), 1577901600)
 
 
 

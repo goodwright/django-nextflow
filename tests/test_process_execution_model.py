@@ -11,6 +11,7 @@ class ProcessExecutionCreationTests(TestCase):
         execution = ProcessExecution.objects.create(
             name="FASTQC (1)", process_name="FASTQC", identifier="abc123",
             stdout="all good", stderr="no problems", status="OK",
+            started=2000, duration=5,
             execution=mixer.blend(Execution)
         )
         execution.full_clean()
@@ -22,11 +23,15 @@ class ProcessExecutionCreationTests(TestCase):
 
 class ProcessExecutionCreationFromObject(TestCase):
 
-    def test_can_create_from_object(self):
+    @patch("django_nextflow.models.parse_datetime")
+    @patch("django_nextflow.models.parse_duration")
+    def test_can_create_from_object(self, mock_dur, mock_date):
         mock_pe = Mock(
             name="PROC (1)", process="PROC", hash="ab/123",
-            status="OK", stdout="out", stderr="err"
+            status="OK", stdout="out", stderr="err", start="123", duration="456"
         )
+        mock_dur.return_value = 10
+        mock_date.return_value = 2000
         ex = mixer.blend(Execution)
         mock_pe.name = "PROC (1)"
         execution = ProcessExecution.create_from_object(mock_pe, ex)
@@ -36,7 +41,18 @@ class ProcessExecutionCreationFromObject(TestCase):
         self.assertEqual(execution.status, "OK")
         self.assertEqual(execution.stdout, "out")
         self.assertEqual(execution.stderr, "err")
+        self.assertEqual(execution.started, 2000)
+        self.assertEqual(execution.duration, 10)
         self.assertEqual(execution.execution, ex)
+        mock_dur.assert_called_with("456")
+        mock_date.assert_called_with("123")
+
+
+class ExecutionFinishedTests(TestCase):
+
+    def test_can_get_finish_time(self):
+        execution = mixer.blend(ProcessExecution, started=1000, duration=60)
+        self.assertEqual(execution.finished, 1060)
 
 
 
