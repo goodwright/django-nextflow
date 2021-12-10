@@ -1,5 +1,5 @@
 import os
-from unittest.mock import Mock, PropertyMock, patch
+from unittest.mock import Mock, PropertyMock, patch, mock_open
 from django.test.utils import override_settings
 from mixer.backend.django import mixer
 from django.test import TestCase
@@ -211,26 +211,60 @@ class DownstreamDataCreationTests(TestCase):
 
 class UpstreamDataCreationTests(TestCase):
 
-    @override_settings(NEXTFLOW_UPLOADS_ROOT="/uploads")
-    @override_settings(NEXTFLOW_DATA_ROOT="/data")
-    @patch("os.listdir")
     @patch("django_nextflow.models.ProcessExecution.work_dir", new_callable=PropertyMock())
-    @patch("os.readlink")
-    def test_can_assign_upstream_data(self, mock_readlink, mock_workdir, mock_listdir):
-        path = lambda s: s.replace("/", os.path.sep)
-        mock_listdir.return_value = ["file1.txt", "file2.txt", "file3.txt"]
-        mock_readlink.side_effect = [path("/uploads/10/file1.txt"), OSError, path("/data/20/work/ab/123456789/file3.txt")]
-        upload1 = mixer.blend(Data, id=10)
-        mixer.blend(Data, id=11)
-        ex1 = mixer.blend(Execution, id=20)
-        proc_ex = mixer.blend(ProcessExecution, identifier="ab/123456", execution=ex1)
-        data1 = mixer.blend(Data, upstream_process_execution=proc_ex, filename="file3.txt")
-        mixer.blend(Data, upstream_process_execution=proc_ex, filename="file5.txt")
-        execution = mixer.blend(ProcessExecution)
-        execution.create_upstream_data_objects()
-        self.assertEqual(set(execution.upstream_data.all()), {data1, upload1})
-        mock_listdir.assert_called_with(mock_workdir)
-        for f in mock_listdir.return_value:
-            mock_readlink.assert_any_call(os.path.join(mock_workdir, f))
+    @patch("builtins.open", new_callable=mock_open)
+    def test_can_handle_missing_run_file(self, mock_open, mock_work):
+        mock_open.side_effect = FileNotFoundError
+        proc_ex = mixer.blend(ProcessExecution)
+        proc_ex.create_upstream_data_objects()
+        self.assertEqual(proc_ex.upstream_data.count(), 0)
+    
+
+    @patch("django_nextflow.models.ProcessExecution.work_dir", new_callable=PropertyMock())
+    @patch("builtins.open", new_callable=mock_open)
+    def test_can_handle_no_stage(self, mock_open, mock_work):
+        mock_open.return_value.__enter__.return_value.read.return_value = "..."
+        proc_ex = mixer.blend(ProcessExecution)
+        proc_ex.create_upstream_data_objects()
+        self.assertEqual(proc_ex.upstream_data.count(), 0)
+    
+
+    @override_settings(NEXTFLOW_UPLOADS_ROOT="/uploads".replace("/", os.path.sep))
+    @override_settings(NEXTFLOW_DATA_ROOT="/data".replace("/", os.path.sep))
+    @patch("django_nextflow.models.ProcessExecution.work_dir", new_callable=PropertyMock())
+    @patch("builtins.open", new_callable=mock_open)
+    def test_can_get_upstream_upload(self, mock_open, mock_work):
+        run = "... ... nxf_stage() { token1 token2 /uploads/123/file.txt token4 /uploads/456/file.txt }".replace("/", os.path.sep)
+        mock_open.return_value.__enter__.return_value.read.return_value = run
+        upload1 = mixer.blend(Data, id=123)
+        upload2 = mixer.blend(Data, id=456)
+        upload3 = mixer.blend(Data, id=789)
+        proc_ex = mixer.blend(ProcessExecution)
+        proc_ex.create_upstream_data_objects()
+        self.assertEqual(proc_ex.upstream_data.count(), 2)
+        self.assertEqual(set(proc_ex.upstream_data.all()), {upload1, upload2})
+    
+
+    @override_settings(NEXTFLOW_UPLOADS_ROOT="/uploads".replace("/", os.path.sep))
+    @override_settings(NEXTFLOW_DATA_ROOT="/data".replace("/", os.path.sep))
+    @patch("django_nextflow.models.ProcessExecution.work_dir", new_callable=PropertyMock())
+    @patch("builtins.open", new_callable=mock_open)
+    def test_can_get_upstream_upload(self, mock_open, mock_work):
+        run = "... ... nxf_stage() { token1 token2 /data/123/work/12/345/file.txt token4 /data/456/work/02/345/file.txt }".replace("/", os.path.sep)
+        mock_open.return_value.__enter__.return_value.read.return_value = run
+        ex1 = mixer.blend(Execution, id=123)
+        pe1 = mixer.blend(ProcessExecution, execution=ex1, identifier="12/345")
+        mixer.blend(Data, upstream_process_execution=pe1, filename="file.txt")
+        pe2 = mixer.blend(ProcessExecution, execution=ex1)
+        ex2 = mixer.blend(Execution, id=456)
+        pe3 = mixer.blend(ProcessExecution, execution=ex2, identifier="02/345")
+        mixer.blend(Data, upstream_process_execution=pe3, filename="file.txt")
+        pe4 = mixer.blend(ProcessExecution, execution=ex2)
+        ex3 = mixer.blend(Execution, id=789)
+        proc_ex = mixer.blend(ProcessExecution)
+        proc_ex.create_upstream_data_objects()
+        self.assertEqual(proc_ex.upstream_data.count(), 2)
+        self.assertEqual(set(proc_ex.upstream_data.all()), set(Data.objects.all()))
+
 
 

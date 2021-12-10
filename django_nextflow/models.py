@@ -1,4 +1,5 @@
 import os
+import re
 import time
 import shutil
 import nextflow
@@ -248,23 +249,28 @@ class ProcessExecution(models.Model):
         """Looks at the files in its work directory and connects to Data objects
         from those which are symlinks."""
 
-        for f in os.listdir(self.work_dir):
-            try:
-                source = os.readlink(os.path.join(self.work_dir, f))
-            except OSError: continue
-            if settings.NEXTFLOW_UPLOADS_ROOT in source:
-                data_id = source.split(os.path.sep)[-2]
-                self.upstream_data.add(Data.objects.get(id=data_id))
-            else:
-                components = source.split(os.path.sep)
-                execution_id = components[-5]
-                identifier = "/".join(components[-3:-1])[:9]
-                filename = components[-1]
-                self.upstream_data.add(
-                    Execution.objects.get(id=execution_id).process_executions.get(
-                        identifier=identifier
-                    ).downstream_data.get(filename=filename)
-                )
+        try:
+            with open(os.path.join(self.work_dir, ".command.run")) as f:
+                run = f.read()
+        except FileNotFoundError: return
+        stage = re.search(r"nxf_stage\(\)((.|\n|\r)+?)}", run)
+        if stage:
+            contents = stage[1]
+            tokens = contents.split()
+            for token in tokens:
+                if settings.NEXTFLOW_UPLOADS_ROOT in token:
+                    data_id = token.split(os.path.sep)[-2]
+                    self.upstream_data.add(Data.objects.get(id=data_id))
+                elif settings.NEXTFLOW_DATA_ROOT in token:
+                    components = token.split(os.path.sep)
+                    execution_id = components[-5]
+                    identifier = "/".join(components[-3:-1])[:9]
+                    filename = components[-1]
+                    self.upstream_data.add(
+                        Execution.objects.get(id=execution_id).process_executions.get(
+                            identifier=identifier
+                        ).downstream_data.get(filename=filename)
+                    )
 
 
 
