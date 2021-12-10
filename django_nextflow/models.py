@@ -232,17 +232,23 @@ class ProcessExecution(models.Model):
         """Looks at the files in its publish directory and makes Data objects
         from them."""
 
-        location = self.publish_dir
-        if location:
-            try:
-                for filename in os.listdir(location):
+        published_files = []
+        publish_dir = os.path.join(
+            settings.NEXTFLOW_DATA_ROOT, str(self.execution.id),
+            settings.NEXTFLOW_PUBLISH_DIR
+        )
+        if not os.path.exists(publish_dir): return
+        for d in os.listdir(publish_dir):
+            published_files += os.listdir(os.path.join(publish_dir, d))
+        for filename in os.listdir(self.work_dir):
+            if filename in published_files:
+                if not os.path.islink(os.path.join(self.work_dir, filename)):
                     Data.objects.create(
                         filename=filename,
                         filetype=get_file_extension(filename),
-                        size=os.path.getsize(os.path.join(location, filename)),
+                        size=os.path.getsize(os.path.join(self.work_dir, filename)),
                         upstream_process_execution=self
                     )
-            except FileNotFoundError: pass
     
 
     def create_upstream_data_objects(self):
