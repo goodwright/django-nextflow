@@ -1,6 +1,6 @@
 import os
 import time
-from unittest.mock import patch
+from unittest.mock import PropertyMock, patch
 from django.test.utils import override_settings
 from mixer.backend.django import mixer
 from django.test import TestCase
@@ -76,8 +76,8 @@ class DataFullPathTests(TestCase):
 
     @override_settings(NEXTFLOW_DATA_ROOT="/data")
     @override_settings(NEXTFLOW_PUBLISH_DIR="results")
-    def test_can_get_full_path_of_output_file(self):
-        data = mixer.blend(Data, filename="reads.fastq", upstream_process_execution=mixer.blend(
-            ProcessExecution, name="PROC", execution=mixer.blend(Execution, id=1)
-        ))
-        self.assertEqual(data.full_path, os.path.join("/data", "1", "results", "PROC", "reads.fastq"))
+    @patch("django_nextflow.models.ProcessExecution.work_dir", new_callable=PropertyMock)
+    def test_can_get_full_path_of_output_file(self, mock_workdir):
+        mock_workdir.return_value = "/work/dir"
+        data = mixer.blend(Data, filename="reads.fastq")
+        self.assertEqual(data.full_path, os.path.join("/work/dir", "reads.fastq"))

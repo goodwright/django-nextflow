@@ -333,12 +333,7 @@ class Data(models.Model):
         """Gets the data's full path on the filesystem."""
 
         if self.upstream_process_execution:
-            location = os.path.join(
-                settings.NEXTFLOW_DATA_ROOT,
-                str(self.upstream_process_execution.execution.id),
-                settings.NEXTFLOW_PUBLISH_DIR,
-                self.upstream_process_execution.name,
-            )
+            location = self.upstream_process_execution.work_dir
         else:
             location = os.path.join(
                 settings.NEXTFLOW_UPLOADS_ROOT, str(self.id),
