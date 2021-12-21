@@ -91,10 +91,13 @@ If you want to supply a file for which there is a `Data` object as the input to
 a pipeline, you can do so as follows:
 
 ```python
-execution = pipeline.run(params={"param1": "xxx"}, data_params={"param2": 23})
+execution = pipeline.run(
+    params={"param1": "xxx"},
+    data_params={"param2": 23, "param3": [24, 25]}
+)
 ```
 
-...where 23 is the ID of the `Data` object.
+...where 23, 24 and 25 are the IDs of `Data` objects.
 
 The `Data` objects above were created by running some pipeline, but you might
 want to create one from scratch without running a pipeline. You can do so either
