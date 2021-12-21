@@ -109,6 +109,18 @@ The file will be copied to `NEXTFLOW_UPLOADS_ROOT` in this case.
 
 ## Changelog
 
+### 0.3
+
+*21st December, 2021*
+
+- Pipelines can now take multiple data inputs per param.
+- Profiles can now be specified when running a pipeline.
+- Compression extension .gz now ignored when detecting filetype.
+- Process executions start and end times are now recorded.
+- Improved system for identifying upstream data inputs.
+- Improved publish_dir identification.
+- Improved log file reading.
+
 ### 0.2
 
 *14th November, 2021*
