@@ -283,9 +283,9 @@ class ProcessExecution(models.Model):
 class Data(models.Model):
     """A data file."""
 
-    filename = models.CharField(max_length=200)
-    filetype = models.CharField(max_length=20)
-    size = models.IntegerField()
+    filename = models.CharField(max_length=1000)
+    filetype = models.CharField(max_length=50)
+    size = models.BigIntegerField()
     created = models.IntegerField(default=time.time)
     upstream_process_execution = models.ForeignKey(ProcessExecution, null=True, related_name="downstream_data", on_delete=models.CASCADE)
     downstream_executions = models.ManyToManyField(Execution, related_name="upstream_data")
