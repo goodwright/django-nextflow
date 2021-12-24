@@ -112,6 +112,13 @@ The file will be copied to `NEXTFLOW_UPLOADS_ROOT` in this case.
 
 ## Changelog
 
+### 0.3.1
+
+*24th December, 2021*
+
+- Data file sizes can now be more than 2<sup>32</sup>.
+- Data file names can now be 1000 characters long.
+
 ### 0.3
 
 *21st December, 2021*
