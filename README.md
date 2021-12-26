@@ -112,6 +112,12 @@ The file will be copied to `NEXTFLOW_UPLOADS_ROOT` in this case.
 
 ## Changelog
 
+### 0.3.2
+
+*26th December, 2021*
+
+- Allow IDs to be big ints.
+
 ### 0.3.1
 
 *24th December, 2021*
