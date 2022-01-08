@@ -55,14 +55,14 @@ class ParamCreationTests(TestCase):
 
     def test_can_create_no_params(self):
         pipeline = mixer.blend(Pipeline)
-        params, data = pipeline.create_params({}, {})
+        params, data = pipeline.create_params({}, {}, "10")
         self.assertEqual(params, {})
         self.assertEqual(data, [])
     
 
     def test_can_create_params_from_basic(self):
         pipeline = mixer.blend(Pipeline)
-        params, data = pipeline.create_params({"1": "2"}, {})
+        params, data = pipeline.create_params({"1": "2"}, {}, "10")
         self.assertEqual(params, {"1": "2"})
         self.assertEqual(data, [])
     
@@ -74,7 +74,7 @@ class ParamCreationTests(TestCase):
         data1 = mixer.blend(Data, id=1)
         data2 = mixer.blend(Data, id=2)
         mixer.blend(Data, id=3)
-        params, data = pipeline.create_params({"1": "2"}, {"A": 1, "B": 2})
+        params, data = pipeline.create_params({"1": "2"}, {"A": 1, "B": 2}, "10")
         self.assertEqual(params, {"1": "2", "A": "/path1", "B": "/path2"})
         self.assertEqual(data, [data1, data2])
     
@@ -85,21 +85,26 @@ class ParamCreationTests(TestCase):
         pipeline = mixer.blend(Pipeline)
         data1 = mixer.blend(Data, id=1)
         mixer.blend(Data, id=3)
-        params, data = pipeline.create_params({"1": "2"}, {"A": 1, "B": 2})
+        params, data = pipeline.create_params({"1": "2"}, {"A": 1, "B": 2}, "10")
         self.assertEqual(params, {"1": "2", "A": "/path1"})
         self.assertEqual(data, [data1])
     
 
+    @override_settings(NEXTFLOW_DATA_ROOT="/data")
     @patch("django_nextflow.models.Data.full_path", new_callable=PropertyMock)
-    def test_can_handle_list_of_data_params(self, mock_path):
+    @patch("os.symlink")
+    def test_can_handle_list_of_data_params(self, mock_link, mock_path):
         mock_path.side_effect = ["/path1", "/path2", "/path4"]
         pipeline = mixer.blend(Pipeline)
-        data1 = mixer.blend(Data, id=1)
-        data2 = mixer.blend(Data, id=2)
-        data4 = mixer.blend(Data, id=4)
-        params, data = pipeline.create_params({"1": "2"}, {"A": 1, "B": [2, 3, 4]})
-        self.assertEqual(params, {"1": "2", "A": "/path1", "B": "/path2,/path4"})
+        data1 = mixer.blend(Data, id=1, filename="file1")
+        data2 = mixer.blend(Data, id=2, filename="file2")
+        data4 = mixer.blend(Data, id=4, filename="file4")
+        params, data = pipeline.create_params({"1": "2"}, {"A": 1, "B": [2, 3, 4]}, "10")
+        self.assertEqual(params, {"1": "2", "A": "/path1", "B": '"{file2,file4}"'})
         self.assertEqual(data, [data1, data2, data4])
+        self.assertEqual(mock_link.call_count, 2)
+        mock_link.assert_any_call("/path2", os.path.join("/data", "10", "file2"))
+        mock_link.assert_any_call("/path4", os.path.join("/data", "10", "file4"))
 
 
 
@@ -110,6 +115,7 @@ class PipelineRunningTests(TestCase):
     @patch("django_nextflow.models.Execution.prepare_directory")
     @patch("django_nextflow.models.Pipeline.create_params")
     @patch("django_nextflow.models.Execution.create_from_object")
+    @patch("django_nextflow.models.Execution.remove_symlinks")
     @patch("django_nextflow.models.ProcessExecution.create_from_object")
     @patch("django_nextflow.models.ProcessExecution.create_downstream_data_objects")
     @patch("django_nextflow.models.ProcessExecution.create_upstream_data_objects")
@@ -126,15 +132,16 @@ class PipelineRunningTests(TestCase):
         mocks[-2].return_value = "1000"
         mocks[-3].return_value = {1: 2, 3: 4}, [mixer.blend(Data), mixer.blend(Data)]
         mocks[-4].return_value = execution
-        mocks[-5].side_effect = [procex1, procex2]
+        mocks[-6].side_effect = [procex1, procex2]
         pipeline = mixer.blend(Pipeline)
         pipeline.run(params={"param1": "X", "param2": "Y"}, data_params={"param3": 100}, profile=["X"])
         mocks[-1].assert_called_with()
         mocks[-2].assert_called_with()
-        mocks[-3].assert_called_with({"param1": "X", "param2": "Y"}, {"param3": 100})
+        mocks[-3].assert_called_with({"param1": "X", "param2": "Y"}, {"param3": 100}, "1000")
         nf_pipeline.run.assert_called_with(location="/data/1000", params={1: 2, 3: 4}, profile=["X"])
         mocks[-4].assert_called_with(nf_execution, "1000", pipeline)
+        mocks[-5].assert_called_with()
         self.assertEqual(set(execution.upstream_data.all()), set(Data.objects.all()))
-        mocks[-5].assert_any_call(nf_procex1, execution)
-        self.assertEqual(mocks[-6].call_count, 2)
+        mocks[-6].assert_any_call(nf_procex1, execution)
         self.assertEqual(mocks[-7].call_count, 2)
+        self.assertEqual(mocks[-8].call_count, 2)

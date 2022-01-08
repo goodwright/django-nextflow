@@ -43,7 +43,7 @@ class Pipeline(models.Model):
         return self.create_pipeline().input_schema
     
 
-    def create_params(self, params, data_params):
+    def create_params(self, params, data_params, dir_name):
         """Creates param string for an execution."""
 
         params = {**(params if params else {})}
@@ -52,9 +52,13 @@ class Pipeline(models.Model):
             for name, value in data_params.items():
                 if isinstance(value, list):
                     datas = [Data.objects.filter(id=id).first() for id in value]
-                    paths = [d.full_path for d in datas if d]
-                    params[name] = ",".join(paths)
+                    paths = [d.filename for d in datas if d]
+                    params[name] = '"{' + ",".join(paths) + '}"'
                     data_objects += filter(bool, datas)
+                    for data in filter(bool, datas):
+                        os.symlink( data.full_path, os.path.join(
+                            settings.NEXTFLOW_DATA_ROOT, dir_name, data.filename
+                        ))
                 else:
                     data = Data.objects.filter(id=value).first()
                     if not data: continue
@@ -69,12 +73,15 @@ class Pipeline(models.Model):
         
         pipeline = self.create_pipeline()
         id = Execution.prepare_directory()
-        params, data_objects = self.create_params(params or {}, data_params or {})
+        params, data_objects = self.create_params(
+            params or {}, data_params or {}, str(id)
+        )
         execution = pipeline.run(
             location=os.path.join(settings.NEXTFLOW_DATA_ROOT, str(id)),
             params=params, profile=profile
         )
         execution_model = Execution.create_from_object(execution, id, self)
+        execution_model.remove_symlinks()
         for data in data_objects: execution_model.upstream_data.add(data)
         for process_execution in execution.process_executions:
             process_execution_model = ProcessExecution.create_from_object(
@@ -147,6 +154,16 @@ class Execution(models.Model):
             duration=parse_duration(execution.duration),
             pipeline=pipeline
         )
+    
+
+    def remove_symlinks(self):
+        """As part of the preparation for running the execution, some symlinks
+        might have been created. This tidies them away."""
+        
+        root = os.path.join(settings.NEXTFLOW_DATA_ROOT, str(self.id))
+        for f in os.listdir(root):
+            if os.path.islink(os.path.join(root, f)):
+                 os.unlink(os.path.join(root, f))
 
 
 

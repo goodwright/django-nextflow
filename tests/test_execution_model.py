@@ -78,3 +78,23 @@ class CreationFromObjectTests(TestCase):
         self.assertEqual(execution.pipeline, pipeline)
         mock_dur.assert_called_with("1s")
         mock_dt.assert_called_with("now")
+
+
+
+class SymlinkRemovalTests(TestCase):
+
+    @override_settings(NEXTFLOW_DATA_ROOT="/data")
+    @patch("os.listdir")
+    @patch("os.path.islink")
+    @patch("os.unlink")
+    def test_can_remove_symlinks(self, mock_unlink, mock_islink, mock_listdir):
+        execution = mixer.blend(Execution, id=20)
+        mock_listdir.return_value = ["work", "results", "file1", "file2", "file3"]
+        mock_islink.side_effect = [False, False, True, False, True]
+        execution.remove_symlinks()
+        mock_listdir.assert_called_with(os.path.join("/data", "20"))
+        for f in mock_listdir.return_value:
+            mock_islink.assert_any_call(os.path.join("/data", "20", f))
+        self.assertEqual(mock_unlink.call_count, 2)
+        mock_unlink.assert_any_call(os.path.join("/data", "20", "file1"))
+        mock_unlink.assert_any_call(os.path.join("/data", "20", "file3"))
