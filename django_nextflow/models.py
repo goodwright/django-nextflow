@@ -334,19 +334,25 @@ class Data(models.Model):
     
 
     @staticmethod
-    def create_from_upload(upload):
+    def create_from_upload(upload, is_directory=False):
         """Creates a data object froma django UploadedFile."""
 
+        name = upload.name
+        if is_directory and upload.name.endswith(".zip"):
+            name = name[:-4]
         data = Data.objects.create(
-            filename=upload.name, filetype=get_file_extension(upload.name),
-            size=upload.size
+            filename=name, filetype=get_file_extension(name),
+            size=upload.size, is_directory=is_directory
         )
         os.mkdir(os.path.join(settings.NEXTFLOW_UPLOADS_ROOT, str(data.id)))
-        with open(os.path.join(
+        new_path = os.path.join(
             settings.NEXTFLOW_UPLOADS_ROOT, str(data.id), upload.name
-        ), "wb+") as f:
+        )
+        with open(new_path, "wb+") as f:
             for chunk in upload.chunks():
                 f.write(chunk)
+        if data.is_directory:
+            shutil.unpack_archive(new_path, new_path.replace(".zip", ""), "zip")
         return data
     
 
