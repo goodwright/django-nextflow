@@ -159,7 +159,7 @@ class Execution(models.Model):
     def remove_symlinks(self):
         """As part of the preparation for running the execution, some symlinks
         might have been created. This tidies them away."""
-        
+
         root = os.path.join(settings.NEXTFLOW_DATA_ROOT, str(self.id))
         for f in os.listdir(root):
             if os.path.islink(os.path.join(root, f)):
@@ -260,6 +260,7 @@ class ProcessExecution(models.Model):
         for filename in os.listdir(self.work_dir):
             if filename in published_files:
                 if not os.path.islink(os.path.join(self.work_dir, filename)):
+
                     Data.objects.create(
                         filename=filename,
                         filetype=get_file_extension(filename),
@@ -304,6 +305,7 @@ class Data(models.Model):
     filetype = models.CharField(max_length=50)
     size = models.BigIntegerField()
     created = models.IntegerField(default=time.time)
+    is_directory = models.BooleanField(default=False)
     upstream_process_execution = models.ForeignKey(ProcessExecution, null=True, related_name="downstream_data", on_delete=models.CASCADE)
     downstream_executions = models.ManyToManyField(Execution, related_name="upstream_data")
     downstream_process_executions = models.ManyToManyField(ProcessExecution, related_name="upstream_data")
@@ -319,12 +321,15 @@ class Data(models.Model):
         filename = path.split(os.path.sep)[-1]
         data = Data.objects.create(
             filename=filename, filetype=get_file_extension(filename),
-            size=os.path.getsize(path)
+            size=os.path.getsize(path), is_directory=os.path.isdir(path)
         )
         os.mkdir(os.path.join(settings.NEXTFLOW_UPLOADS_ROOT, str(data.id)))
-        shutil.copy(path, os.path.join(
+        new_path = os.path.join(
             settings.NEXTFLOW_UPLOADS_ROOT, str(data.id), filename
-        ))
+        )
+        shutil.copy(path, new_path)
+        if data.is_directory:
+            shutil.make_archive(f"{new_path}.zip", "zip", new_path)
         return data
     
 
