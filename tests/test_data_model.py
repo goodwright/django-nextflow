@@ -73,7 +73,7 @@ class DataCreationFromPathTests(TestCase):
             "/uploads", str(data.id), "file"
         ))
         mock_zip.assert_called_with(
-            os.path.join("/uploads", str(data.id), "file.zip"),
+            os.path.join("/uploads", str(data.id), "file"),
             "zip", os.path.join("/uploads", str(data.id), "file"),
         )
 
@@ -126,7 +126,7 @@ class DataCreationFromUploadedFile(TestCase):
         mock_open.return_value.__enter__.return_value.write.assert_called_with(b"abc")
         mock_unzip.assert_called_with(
             os.path.join("/uploads", str(data.id), "file.zip"),
-            os.path.join("/uploads", str(data.id), "file"), "zip"
+            os.path.join("/uploads", str(data.id)), "zip"
         )
 
 

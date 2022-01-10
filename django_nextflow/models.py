@@ -270,7 +270,7 @@ class ProcessExecution(models.Model):
                         upstream_process_execution=self
                     )
                     if is_directory:
-                        shutil.make_archive(f"{path}.zip", "zip", path)
+                        shutil.make_archive(path, "zip", path)
     
 
     def create_upstream_data_objects(self):
@@ -333,7 +333,7 @@ class Data(models.Model):
         )
         shutil.copy(path, new_path)
         if data.is_directory:
-            shutil.make_archive(f"{new_path}.zip", "zip", new_path)
+            shutil.make_archive(new_path, "zip", new_path)
         return data
     
 
@@ -348,15 +348,14 @@ class Data(models.Model):
             filename=name, filetype=get_file_extension(name),
             size=upload.size, is_directory=is_directory
         )
-        os.mkdir(os.path.join(settings.NEXTFLOW_UPLOADS_ROOT, str(data.id)))
-        new_path = os.path.join(
-            settings.NEXTFLOW_UPLOADS_ROOT, str(data.id), upload.name
-        )
+        location = os.path.join(settings.NEXTFLOW_UPLOADS_ROOT, str(data.id))
+        os.mkdir(location)
+        new_path = os.path.join(location, upload.name)
         with open(new_path, "wb+") as f:
             for chunk in upload.chunks():
                 f.write(chunk)
         if data.is_directory:
-            shutil.unpack_archive(new_path, new_path.replace(".zip", ""), "zip")
+            shutil.unpack_archive(new_path, location, "zip")
         return data
     
 

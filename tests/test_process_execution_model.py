@@ -214,7 +214,7 @@ class DownstreamDataCreationTests(TestCase):
             mock_ext.assert_any_call(d.filename)
             mock_size.assert_any_call(os.path.join("/workdir", d.filename))
         mock_zip.assert_called_with(
-            os.path.join("/workdir", "directory.zip"), 
+            os.path.join("/workdir", "directory"), 
             "zip", os.path.join("/workdir", "directory")
         )
 
