@@ -185,30 +185,38 @@ class DownstreamDataCreationTests(TestCase):
     @patch("os.listdir")
     @patch("django_nextflow.models.ProcessExecution.work_dir", new_callable=PropertyMock())
     @patch("os.path.islink")
+    @patch("os.path.isdir")
     @patch("django_nextflow.models.get_file_extension")
     @patch("os.path.getsize")
-    def test_can_get_downstream_data(self, mock_size, mock_ext, mock_link, mock_work, mock_listdir, mock_exists):
+    @patch("shutil.make_archive")
+    def test_can_get_downstream_data(self, mock_zip, mock_size, mock_ext, mock_dir, mock_link, mock_work, mock_listdir, mock_exists):
         mock_exists.return_value = True
         mock_listdir.side_effect = [
             ["proc1", "proc2", "proc3"],
-            ["out1.txt"], ["out2.txt", "out3.txt", "out4.txt"], ["out5.txt"],
-            ["temp1", "out2.txt", "out3.txt", "out4.txt"]
+            ["out1.txt", "directory"], ["out2.txt", "out3.txt", "out4.txt"], ["out5.txt"],
+            ["temp1", "out2.txt", "out3.txt", "out4.txt", "directory"]
         ]
         proc_ex = mixer.blend(ProcessExecution, execution=mixer.blend(Execution, id=10), work_dir="/workdir")
-        mock_link.side_effect = [True, False, False]
-        mock_ext.return_value = "txt"
-        mock_size.side_effect = [10, 20]
+        mock_link.side_effect = [True, False, False, False]
+        mock_dir.side_effect = [False, False, True]
+        mock_ext.side_effect = ["txt", "txt", ""]
+        mock_size.side_effect = [10, 20, 30]
         proc_ex.create_downstream_data_objects()
-        self.assertEqual(proc_ex.downstream_data.count(), 2)
+        self.assertEqual(proc_ex.downstream_data.count(), 3)
         mock_link.assert_any_call(os.path.join("/workdir", "out2.txt"))
         mock_link.assert_any_call(os.path.join("/workdir", "out3.txt"))
         mock_link.assert_any_call(os.path.join("/workdir", "out4.txt"))
+        mock_link.assert_any_call(os.path.join("/workdir", "directory"))
         for d in proc_ex.downstream_data.all():
-            self.assertIn(d.filename, ["out3.txt", "out4.txt"])
-            self.assertEqual(d.filetype, "txt")
-            self.assertIn(d.size, [10, 20])
+            self.assertIn(d.filename, ["out3.txt", "out4.txt", "directory"])
+            self.assertIn(d.filetype, ["txt", ""])
+            self.assertIn(d.size, [10, 20, 30])
             mock_ext.assert_any_call(d.filename)
             mock_size.assert_any_call(os.path.join("/workdir", d.filename))
+        mock_zip.assert_called_with(
+            os.path.join("/workdir", "directory.zip"), 
+            "zip", os.path.join("/workdir", "directory")
+        )
 
 
 

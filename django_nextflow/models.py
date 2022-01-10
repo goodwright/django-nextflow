@@ -259,14 +259,18 @@ class ProcessExecution(models.Model):
             published_files += os.listdir(os.path.join(publish_dir, d))
         for filename in os.listdir(self.work_dir):
             if filename in published_files:
-                if not os.path.islink(os.path.join(self.work_dir, filename)):
-
+                path = os.path.join(self.work_dir, filename)
+                if not os.path.islink(path):
+                    is_directory = os.path.isdir(path)
                     Data.objects.create(
                         filename=filename,
+                        is_directory=is_directory,
                         filetype=get_file_extension(filename),
                         size=os.path.getsize(os.path.join(self.work_dir, filename)),
                         upstream_process_execution=self
                     )
+                    if is_directory:
+                        shutil.make_archive(f"{path}.zip", "zip", path)
     
 
     def create_upstream_data_objects(self):
