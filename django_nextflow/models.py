@@ -261,16 +261,7 @@ class ProcessExecution(models.Model):
             if filename in published_files:
                 path = os.path.join(self.work_dir, filename)
                 if not os.path.islink(path):
-                    is_directory = os.path.isdir(path)
-                    Data.objects.create(
-                        filename=filename,
-                        is_directory=is_directory,
-                        filetype=get_file_extension(filename),
-                        size=os.path.getsize(os.path.join(self.work_dir, filename)),
-                        upstream_process_execution=self
-                    )
-                    if is_directory:
-                        shutil.make_archive(path, "zip", path)
+                    Data.create_from_output(path, self)
     
 
     def create_upstream_data_objects(self):
@@ -294,11 +285,16 @@ class ProcessExecution(models.Model):
                     execution_id = components[-5]
                     identifier = "/".join(components[-3:-1])[:9]
                     filename = components[-1]
-                    self.upstream_data.add(
-                        Execution.objects.get(id=execution_id).process_executions.get(
-                            identifier=identifier
-                        ).downstream_data.get(filename=filename)
-                    )
+                    execution = Execution.objects.get(id=execution_id)
+                    process_execution = execution.process_executions.get(identifier=identifier)
+                    upstream = process_execution.downstream_data.filter(filename=filename).first()
+                    if upstream:
+                        self.upstream_data.add(upstream)
+                    else:
+                        path = os.path.join(process_execution.work_dir, filename)
+                        self.upstream_data.add(
+                            Data.create_from_output(path, process_execution)
+                        )
 
 
 
@@ -359,6 +355,24 @@ class Data(models.Model):
         return data
     
 
+    @staticmethod
+    def create_from_output(path, process_execution):
+        """Takes the path to the output file of some process execution, and
+        creates a Data object from it."""
+
+        filename = path.split(os.path.sep)[-1]
+        is_directory = os.path.isdir(path)
+        data = Data.objects.create(
+            filename=filename,
+            is_directory=is_directory,
+            filetype=get_file_extension(filename),
+            size=os.path.getsize(path),
+            upstream_process_execution=process_execution
+        )
+        if is_directory: shutil.make_archive(path, "zip", path)
+        return data
+
+    
     @property
     def full_path(self):
         """Gets the data's full path on the filesystem."""

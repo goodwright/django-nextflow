@@ -79,7 +79,7 @@ class DataCreationFromPathTests(TestCase):
 
 
 
-class DataCreationFromUploadedFile(TestCase):
+class DataCreationFromUploadedFileTests(TestCase):
 
     @override_settings(NEXTFLOW_UPLOADS_ROOT="/uploads")
     @patch("django_nextflow.models.get_file_extension")
@@ -128,6 +128,53 @@ class DataCreationFromUploadedFile(TestCase):
             os.path.join("/uploads", str(data.id), "file.zip"),
             os.path.join("/uploads", str(data.id)), "zip"
         )
+
+
+
+class DataCreationFromOutputTests(TestCase):
+
+    @override_settings(NEXTFLOW_UPLOADS_ROOT="/uploads")
+    @patch("os.path.isdir")
+    @patch("django_nextflow.models.get_file_extension")
+    @patch("os.path.getsize")
+    def test_can_create_from_output(self, mock_size, mock_ext, mock_dir):
+        process_execution = mixer.blend(ProcessExecution)
+        mock_ext.return_value = "txt"
+        mock_size.return_value = 200
+        mock_dir.return_value = False
+        data = Data.create_from_output("/path/to/file.txt", process_execution)
+        self.assertEqual(data.filename, "file.txt")
+        self.assertEqual(data.filetype, "txt")
+        self.assertEqual(data.size, 200)
+        self.assertFalse(data.is_directory)
+        self.assertLess(abs(data.created - time.time()), 1)
+        self.assertIs(data.upstream_process_execution, process_execution)
+        mock_ext.assert_called_with("file.txt")
+        mock_size.assert_called_with("/path/to/file.txt")
+        mock_dir.assert_called_with("/path/to/file.txt")
+    
+
+    @override_settings(NEXTFLOW_UPLOADS_ROOT="/uploads")
+    @patch("os.path.isdir")
+    @patch("django_nextflow.models.get_file_extension")
+    @patch("os.path.getsize")
+    @patch("shutil.make_archive")
+    def test_can_create_directory_from_output(self, mock_zip, mock_size, mock_ext, mock_dir):
+        process_execution = mixer.blend(ProcessExecution)
+        mock_ext.return_value = ""
+        mock_size.return_value = 200
+        mock_dir.return_value = True
+        data = Data.create_from_output("/path/to/file", process_execution)
+        self.assertEqual(data.filename, "file")
+        self.assertEqual(data.filetype, "")
+        self.assertEqual(data.size, 200)
+        self.assertTrue(data.is_directory)
+        self.assertLess(abs(data.created - time.time()), 1)
+        self.assertIs(data.upstream_process_execution, process_execution)
+        mock_ext.assert_called_with("file")
+        mock_size.assert_called_with("/path/to/file")
+        mock_dir.assert_called_with("/path/to/file")
+        mock_zip.assert_called_with("/path/to/file", "zip", "/path/to/file")
 
 
 
