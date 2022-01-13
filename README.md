@@ -112,6 +112,14 @@ The file will be copied to `NEXTFLOW_UPLOADS_ROOT` in this case.
 
 ## Changelog
 
+### 0.4
+
+*12th January, 2022*
+
+- Better support for multiple data objects.
+- Data objects can now be directories, which will be automatically zipped.
+- When creating upstream data connections, data objects will be created if needed.
+
 ### 0.3.2
 
 *26th December, 2021*
