@@ -185,27 +185,28 @@ class DownstreamDataCreationTests(TestCase):
     @patch("os.listdir")
     @patch("django_nextflow.models.ProcessExecution.work_dir", new_callable=PropertyMock())
     @patch("os.path.islink")
+    @patch("os.readlink")
     @patch("django_nextflow.models.Data.create_from_output")
-    def test_can_get_downstream_data(self, mock_create, mock_link, mock_work, mock_listdir, mock_exists):
-        mock_exists.return_value = True
+    def test_can_get_downstream_data(self, mock_create, mock_read, mock_islink, mock_work, mock_listdir, mock_exists):
         mock_listdir.side_effect = [
-            ["proc1", "proc2", "proc3"],
-            ["out1.txt", "directory"], ["out2.txt", "out3.txt", "out4.txt"], ["out5.txt"],
-            ["temp1", "out2.txt", "out3.txt", "out4.txt", "directory"]
+            ["PROC1", "PROC2"],
+            ["result1.txt", "outfile2.txt"],
+            ["outfile1.txt", "outfile3.txt", "outfile5.txt"],
+            [".command.sh", "outfile1.txt", "infile.txt", "outfile2.txt", "outfile3.txt"],
         ]
-        proc_ex = mixer.blend(ProcessExecution, execution=mixer.blend(Execution, id=10), work_dir="/workdir")
-        mock_link.side_effect = [True, False, False, False]
+        mock_islink.side_effect = [
+            True, True, True, True, True,
+            False, False, True, False, False
+        ]
+        mock_read.side_effect = [
+            "/other/result1.txt", "/other/outfile2.txt",
+            "/workdir/outfile1.txt", "/workdir/outfile3.txt", "/workdir/outfile5.txt"
+        ]
+        proc_ex = mixer.blend(ProcessExecution, work_dir="/workdir")
         proc_ex.create_downstream_data_objects()
-
-        mock_link.assert_any_call(os.path.join("/workdir", "out2.txt"))
-        mock_link.assert_any_call(os.path.join("/workdir", "out3.txt"))
-        mock_link.assert_any_call(os.path.join("/workdir", "out4.txt"))
-        mock_link.assert_any_call(os.path.join("/workdir", "directory"))
-        self.assertEqual(mock_create.call_count, 3)
-        mock_create.assert_any_call(os.path.join("/workdir", "out3.txt"), proc_ex)
-        mock_create.assert_any_call(os.path.join("/workdir", "out4.txt"), proc_ex)
-        mock_create.assert_any_call(os.path.join("/workdir", "directory"), proc_ex)
-        
+        self.assertEqual(mock_create.call_count, 2)
+        mock_create.assert_any_call(os.path.join("/workdir", "outfile1.txt"), proc_ex)
+        mock_create.assert_any_call(os.path.join("/workdir", "outfile3.txt"), proc_ex)
 
 
 

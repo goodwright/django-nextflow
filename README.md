@@ -36,7 +36,9 @@ are stored. All references to pipeline files will use this as the root.
 
 - `NEXTFLOW_PUBLISH_DIR` - the name of the folder published files will be saved
 to. Within an execution directory, django-nextflow will look in
-NEXTFLOW_PUBLISH_DIR/process_name for output files for that process.
+NEXTFLOW_PUBLISH_DIR/process_name for output files for that process. These files
+*must* be published as symlinks, not copies, otherwise django-nextflow will not
+recognise them.
 
 ## Usage
 

@@ -249,19 +249,23 @@ class ProcessExecution(models.Model):
         """Looks at the files in its publish directory and makes Data objects
         from them."""
 
-        published_files = []
         publish_dir = os.path.join(
             settings.NEXTFLOW_DATA_ROOT, str(self.execution.id),
             settings.NEXTFLOW_PUBLISH_DIR
         )
         if not os.path.exists(publish_dir): return
-        for d in os.listdir(publish_dir):
-            published_files += os.listdir(os.path.join(publish_dir, d))
+        results_files = {d: [
+            os.readlink(os.path.join(publish_dir, d, f)) if
+            os.path.islink(os.path.join(publish_dir, d, f)) else None
+            for f in os.listdir(os.path.join(publish_dir, d))
+        ] for d in os.listdir(publish_dir)}
         for filename in os.listdir(self.work_dir):
-            if filename in published_files:
-                path = os.path.join(self.work_dir, filename)
-                if not os.path.islink(path):
-                    Data.create_from_output(path, self)
+            path = os.path.join(self.work_dir, filename)
+            if not os.path.islink(path):
+                for d in results_files:
+                    for f in results_files[d]:
+                        if f == os.path.abspath(path):
+                            Data.create_from_output(path, self)
     
 
     def create_upstream_data_objects(self):
