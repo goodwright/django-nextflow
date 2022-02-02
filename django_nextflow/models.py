@@ -43,11 +43,11 @@ class Pipeline(models.Model):
         return self.create_pipeline().input_schema
     
 
-    def create_params(self, params, data_params, dir_name):
+    def create_params(self, params, data_params, execution_params, dir_name):
         """Creates param string for an execution."""
 
         params = {**(params if params else {})}
-        data_objects = []
+        data_objects, execution_objects = [], []
         if data_params:
             for name, value in data_params.items():
                 if isinstance(value, list):
@@ -65,16 +65,36 @@ class Pipeline(models.Model):
                     path = data.full_path
                     params[name] = path
                     data_objects.append(data)
-        return params, data_objects
+        if execution_params:
+            for name, value in execution_params.items():
+                execution = Execution.objects.filter(job__id=value).first()
+                if not execution: continue
+                ex_dir_name = os.path.join(
+                    settings.NEXTFLOW_DATA_ROOT, dir_name, "executions", name
+                )
+                os.makedirs(ex_dir_name, exist_ok=True)
+                for process in execution.process_executions.all():
+                    os.mkdir(os.path.join(ex_dir_name, process.process_name))
+                    for data in process.downstream_data.all():
+                        os.symlink(data.full_path, os.path.join(
+                            ex_dir_name, process.process_name, data.filename
+                        ))
+                for data in execution.upstream_data.all():
+                    os.symlink(data.full_path, os.path.join(
+                        ex_dir_name, data.filename
+                    ))   
+                params[name] = ex_dir_name
+                execution_objects.append(execution)
+        return params, data_objects, execution_objects
 
 
-    def run(self, params=None, data_params=None, profile=None):
+    def run(self, params=None, data_params=None, execution_params=None, profile=None):
         """Run the pipeline with a set of parameters."""
         
         pipeline = self.create_pipeline()
         id = Execution.prepare_directory()
-        params, data_objects = self.create_params(
-            params or {}, data_params or {}, str(id)
+        params, data_objects, execution_objects = self.create_params(
+            params or {}, data_params or {}, execution_params or {}, str(id)
         )
         execution = pipeline.run(
             location=os.path.join(settings.NEXTFLOW_DATA_ROOT, str(id)),
@@ -83,6 +103,7 @@ class Pipeline(models.Model):
         execution_model = Execution.create_from_object(execution, id, self)
         execution_model.remove_symlinks()
         for data in data_objects: execution_model.upstream_data.add(data)
+        for ex in execution_objects: execution_model.upstream_executions.add(ex)
         for process_execution in execution.process_executions:
             process_execution_model = ProcessExecution.create_from_object(
                 process_execution, execution_model
@@ -106,6 +127,7 @@ class Execution(models.Model):
     started = models.FloatField()
     duration = models.FloatField()
     pipeline = models.ForeignKey(Pipeline, related_name="executions", on_delete=models.CASCADE)
+    upstream_executions = models.ManyToManyField("django_nextflow.Execution", related_name="downstream_executions")
         
 
     def __str__(self):
@@ -164,6 +186,8 @@ class Execution(models.Model):
         for f in os.listdir(root):
             if os.path.islink(os.path.join(root, f)):
                  os.unlink(os.path.join(root, f))
+        if os.path.exists(os.path.join(root, "executions")):
+            shutil.rmtree(os.path.join(root, "executions"))
 
 
 
