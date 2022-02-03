@@ -44,48 +44,67 @@ class Pipeline(models.Model):
     
 
     def create_params(self, params, data_params, execution_params, dir_name):
-        """Creates param string for an execution."""
+        """Creates param dict for an execution."""
 
         params = {**(params if params else {})}
         data_objects, execution_objects = [], []
         if data_params:
-            for name, value in data_params.items():
-                if isinstance(value, list):
-                    datas = [Data.objects.filter(id=id).first() for id in value]
-                    paths = [d.filename for d in datas if d]
-                    params[name] = '"{' + ",".join(paths) + '}"'
-                    data_objects += filter(bool, datas)
-                    for data in filter(bool, datas):
-                        os.symlink( data.full_path, os.path.join(
-                            settings.NEXTFLOW_DATA_ROOT, dir_name, data.filename
-                        ))
-                else:
-                    data = Data.objects.filter(id=value).first()
-                    if not data: continue
-                    path = data.full_path
-                    params[name] = path
-                    data_objects.append(data)
+            data_objects = self.create_data_params(data_params, dir_name, params)
         if execution_params:
-            for name, value in execution_params.items():
-                execution = Execution.objects.filter(job__id=value).first()
-                if not execution: continue
-                ex_dir_name = os.path.join(
-                    settings.NEXTFLOW_DATA_ROOT, dir_name, "executions", name
-                )
-                os.makedirs(ex_dir_name, exist_ok=True)
-                for process in execution.process_executions.all():
-                    os.mkdir(os.path.join(ex_dir_name, process.process_name))
-                    for data in process.downstream_data.all():
-                        os.symlink(data.full_path, os.path.join(
-                            ex_dir_name, process.process_name, data.filename
-                        ))
-                for data in execution.upstream_data.all():
-                    os.symlink(data.full_path, os.path.join(
-                        ex_dir_name, data.filename
-                    ))   
-                params[name] = ex_dir_name
-                execution_objects.append(execution)
+            execution_objects = self.create_execution_params(execution_params, dir_name, params)
         return params, data_objects, execution_objects
+    
+
+    def create_data_params(self, data_params, dir_name, params):
+        """Creates a param dict for params which refer to django-nextflow data
+        objects."""
+
+        data_objects = []
+        for name, value in data_params.items():
+            if isinstance(value, list):
+                datas = [Data.objects.filter(id=id).first() for id in value]
+                paths = [d.filename for d in datas if d]
+                params[name] = '"{' + ",".join(paths) + '}"'
+                data_objects += filter(bool, datas)
+                for data in filter(bool, datas):
+                    os.symlink( data.full_path, os.path.join(
+                        settings.NEXTFLOW_DATA_ROOT, dir_name, data.filename
+                    ))
+            else:
+                data = Data.objects.filter(id=value).first()
+                if not data: continue
+                path = data.full_path
+                params[name] = path
+                data_objects.append(data)
+        return data_objects
+    
+
+    def create_execution_params(self, execution_params, dir_name, params):
+        """Creates a param dict for params which refer to django-nextflow
+        execution objects."""
+
+        execution_objects = []
+        for name, value in execution_params.items():
+            execution = Execution.objects.filter(id=value).first()
+            if not execution: continue
+            ex_dir_name = os.path.join(
+                settings.NEXTFLOW_DATA_ROOT, dir_name, "executions", name
+            )
+            os.makedirs(ex_dir_name, exist_ok=True)
+            for process in execution.process_executions.all():
+                os.mkdir(os.path.join(ex_dir_name, process.process_name))
+                for data in process.downstream_data.all():
+                    os.symlink(data.full_path, os.path.join(
+                        ex_dir_name, process.process_name, data.filename
+                    ))
+            for data in execution.upstream_data.all():
+                os.symlink(data.full_path, os.path.join(
+                    ex_dir_name, data.filename
+                ))   
+            params[name] = ex_dir_name
+            execution_objects.append(execution)
+        return execution_objects
+
 
 
     def run(self, params=None, data_params=None, execution_params=None, profile=None):
