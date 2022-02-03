@@ -101,6 +101,16 @@ execution = pipeline.run(
 
 ...where 23, 24 and 25 are the IDs of `Data` objects.
 
+You can also supply entire executions as inputs, in which case they will be
+provided to the pipeline as a directory of symlinked files:
+
+```python
+execution = pipeline.run(
+    params={"param1": "xxx"},
+    execution_params={"genome1": 23, "genome2": 24}
+)
+```
+
 The `Data` objects above were created by running some pipeline, but you might
 want to create one from scratch without running a pipeline. You can do so either
 from a path string, or from a Django `UploadedFile` object:
@@ -113,6 +123,13 @@ data2 = Data.create_from_upload(django_upload_object)
 The file will be copied to `NEXTFLOW_UPLOADS_ROOT` in this case.
 
 ## Changelog
+
+### 0.5
+
+*3rd February, 2022*
+
+- Pipelines can now take execution inputs.
+- Fixed method for detecting downstream data products.
 
 ### 0.4
 
