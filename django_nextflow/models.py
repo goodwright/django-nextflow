@@ -6,9 +6,10 @@ import nextflow
 from random import randint
 from django.db import models
 from django.conf import settings
+from django_random_id_model import RandomIDModel, generate_random_id
 from .utils import get_file_extension, parse_datetime, parse_duration
 
-class Pipeline(models.Model):
+class Pipeline(RandomIDModel):
     """A Nextflow pipeline, representing some .nf file."""
 
     name = models.CharField(max_length=200)
@@ -107,11 +108,11 @@ class Pipeline(models.Model):
 
 
 
-    def run(self, params=None, data_params=None, execution_params=None, profile=None):
+    def run(self, params=None, data_params=None, execution_params=None, profile=None, execution_id=None):
         """Run the pipeline with a set of parameters."""
         
         pipeline = self.create_pipeline()
-        id = Execution.prepare_directory()
+        id = Execution.prepare_directory(execution_id=execution_id)
         params, data_objects, execution_objects = self.create_params(
             params or {}, data_params or {}, execution_params or {}, str(id)
         )
@@ -134,7 +135,7 @@ class Pipeline(models.Model):
 
 
 
-class Execution(models.Model):
+class Execution(RandomIDModel):
     """A record of the running of some Nextflow file."""
 
     identifier = models.CharField(max_length=100)
@@ -173,14 +174,14 @@ class Execution(models.Model):
     
 
     @staticmethod
-    def prepare_directory():
+    def prepare_directory(execution_id=None):
         """Generates a random 18-digit ID and creates a directory in the data
         root with that ID. The ID itself is returned."""
 
-        digits_length = 18
-        id = randint(10 ** (digits_length - 1), 10 ** digits_length)
-        os.mkdir(os.path.join(settings.NEXTFLOW_DATA_ROOT, str(id)))
-        return id
+        if not execution_id:
+            execution_id = generate_random_id()
+        os.mkdir(os.path.join(settings.NEXTFLOW_DATA_ROOT, str(execution_id)))
+        return execution_id
     
 
     @staticmethod
@@ -210,7 +211,7 @@ class Execution(models.Model):
 
 
 
-class ProcessExecution(models.Model):
+class ProcessExecution(RandomIDModel):
     """A record of the execution of a process."""
 
     name = models.CharField(max_length=200)
@@ -345,7 +346,7 @@ class ProcessExecution(models.Model):
 
 
 
-class Data(models.Model):
+class Data(RandomIDModel):
     """A data file."""
 
     filename = models.CharField(max_length=1000)

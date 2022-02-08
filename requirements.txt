@@ -1,2 +1,3 @@
 django
 nextflow
+django_random_id_model
