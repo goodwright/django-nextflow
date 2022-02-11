@@ -190,8 +190,8 @@ class Execution(RandomIDModel):
 
         return Execution.objects.create(
             id=id, identifier=execution.id, command=execution.command,
-            stdout=execution.process.stdout, stderr=execution.process.stderr,
-            exit_code=execution.process.returncode, status=execution.status,
+            stdout=execution.stdout, stderr=execution.stderr,
+            exit_code=execution.returncode, status=execution.status,
             started=parse_datetime(execution.datetime),
             duration=parse_duration(execution.duration),
             pipeline=pipeline
