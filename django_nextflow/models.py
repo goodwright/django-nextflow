@@ -108,7 +108,7 @@ class Pipeline(RandomIDModel):
 
 
 
-    def run(self, params=None, data_params=None, execution_params=None, profile=None, execution_id=None):
+    def run(self, params=None, data_params=None, execution_params=None, profile=None, execution_id=None, post_poll=None):
         """Run the pipeline with a set of parameters."""
         
         pipeline = self.create_pipeline()
@@ -131,9 +131,38 @@ class Pipeline(RandomIDModel):
             process_execution_model.create_downstream_data_objects()
         for process_execution_model in execution_model.process_executions.all():
             process_execution_model.create_upstream_data_objects()
+        execution_model.remove_symlinks()
         return execution_model
 
 
+    def run_and_update(self, params=None, data_params=None, execution_params=None, profile=None, execution_id=None, post_poll=None):
+        pipeline = self.create_pipeline()
+        id = Execution.prepare_directory(execution_id=execution_id)
+        params, data_objects, execution_objects = self.create_params(
+            params or {}, data_params or {}, execution_params or {}, str(id)
+        )
+        for execution in pipeline.run_and_poll(
+            location=os.path.join(settings.NEXTFLOW_DATA_ROOT, str(id)),
+            params=params, profile=profile
+        ):
+            execution_model = Execution.create_from_object(execution, id, self)
+            for data in data_objects:
+                if not execution_model.upstream_data.filter(id=data.id):
+                    execution_model.upstream_data.add(data)
+            for ex in execution_objects:
+                if not execution_model.upstream_executions.filter(id=ex.id):
+                    execution_model.upstream_executions.add(ex)
+            for process_execution in execution.process_executions:
+                process_execution_model = ProcessExecution.create_from_object(
+                    process_execution, execution_model
+                )
+                process_execution_model.create_downstream_data_objects()
+            for process_execution_model in execution_model.process_executions.all():
+                process_execution_model.create_upstream_data_objects()
+            if post_poll:
+                post_poll(execution_model)
+        execution_model.remove_symlinks()
+        return execution_model
 
 class Execution(RandomIDModel):
     """A record of the running of some Nextflow file."""
@@ -141,7 +170,7 @@ class Execution(RandomIDModel):
     identifier = models.CharField(max_length=100)
     stdout = models.TextField()
     stderr = models.TextField()
-    exit_code = models.IntegerField()
+    exit_code = models.IntegerField(null=True)
     status = models.CharField(max_length=20)
     command = models.TextField()
     started = models.FloatField()
@@ -188,6 +217,16 @@ class Execution(RandomIDModel):
     def create_from_object(execution, id, pipeline):
         """Creates a Execution model object from a nextflow.py Execution."""
 
+        existing = Execution.objects.filter(id=id).first()
+        if existing:
+            existing.stdout = execution.stdout
+            existing.stderr = execution.stderr
+            existing.status = execution.status
+            existing.returncode = execution.returncode
+            existing.started = parse_datetime(execution.datetime)
+            existing.duration = parse_duration(execution.duration)
+            existing.save()
+            return existing
         return Execution.objects.create(
             id=id, identifier=execution.id, command=execution.command,
             stdout=execution.stdout, stderr=execution.stderr,
@@ -220,8 +259,8 @@ class ProcessExecution(RandomIDModel):
     status = models.CharField(max_length=20)
     stdout = models.TextField()
     stderr = models.TextField()
-    started = models.FloatField()
-    duration = models.FloatField()
+    started = models.FloatField(null=True)
+    duration = models.FloatField(null=True)
     execution = models.ForeignKey(Execution, related_name="process_executions", on_delete=models.CASCADE)
 
     def __str__(self):
@@ -233,17 +272,19 @@ class ProcessExecution(RandomIDModel):
         """Creates a ProcessExecution model object from a nextflow.py
         ProcessExecution."""
 
-        return ProcessExecution.objects.create(
-            name=process_execution.name,
-            process_name=process_execution.process,
+        proc_ex = ProcessExecution.objects.get_or_create(
             identifier=process_execution.hash,
-            status=process_execution.status,
-            stdout=process_execution.stdout,
-            stderr=process_execution.stderr,
-            started=parse_datetime(process_execution.start),
-            duration=parse_duration(process_execution.duration),
             execution=execution
-        )
+        )[0]
+        proc_ex.name = process_execution.name
+        proc_ex.process_name = process_execution.process
+        proc_ex.status = process_execution.status
+        proc_ex.stdout = process_execution.stdout
+        proc_ex.stderr = process_execution.stderr
+        proc_ex.started = parse_datetime(process_execution.start)
+        proc_ex.duration = parse_duration(process_execution.duration)
+        proc_ex.save()
+        return proc_ex
     
 
     @property
@@ -409,6 +450,7 @@ class Data(RandomIDModel):
         creates a Data object from it."""
 
         filename = path.split(os.path.sep)[-1]
+        if process_execution.downstream_data.filter(filename=filename): return
         is_directory = os.path.isdir(path)
         data = Data.objects.create(
             filename=filename,
