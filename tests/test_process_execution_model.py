@@ -46,6 +46,34 @@ class ProcessExecutionCreationFromObject(TestCase):
         self.assertEqual(execution.execution, ex)
         mock_dur.assert_called_with("456")
         mock_date.assert_called_with("123")
+    
+
+    @patch("django_nextflow.models.parse_datetime")
+    @patch("django_nextflow.models.parse_duration")
+    def test_can_update_from_object(self, mock_dur, mock_date):
+        mock_pe = Mock(
+            name="PROC (1)", process="PROC", hash="ab/123",
+            status="OK", stdout="out", stderr="err", start="123", duration="456"
+        )
+        mock_dur.return_value = 10
+        mock_date.return_value = 2000
+        ex = mixer.blend(Execution)
+        mock_pe.name = "PROC (1)"
+        pe = mixer.blend(ProcessExecution, identifier="ab/123", execution=ex)
+        execution = ProcessExecution.create_from_object(mock_pe, ex)
+        self.assertEqual(pe, execution)
+        self.assertEqual(execution.name, "PROC (1)")
+        self.assertEqual(execution.process_name, "PROC")
+        self.assertEqual(execution.identifier, "ab/123")
+        self.assertEqual(execution.status, "OK")
+        self.assertEqual(execution.stdout, "out")
+        self.assertEqual(execution.stderr, "err")
+        self.assertEqual(execution.started, 2000)
+        self.assertEqual(execution.duration, 10)
+        self.assertEqual(execution.execution, ex)
+        mock_dur.assert_called_with("456")
+        mock_date.assert_called_with("123")
+        self.assertEqual(ProcessExecution.objects.count(), 1)
 
 
 class ExecutionFinishedTests(TestCase):
@@ -264,8 +292,9 @@ class UpstreamDataCreationTests(TestCase):
         pe4 = mixer.blend(ProcessExecution, execution=ex2)
         ex3 = mixer.blend(Execution, id=789)
         proc_ex = mixer.blend(ProcessExecution)
+        mock_create.return_value = mixer.blend(Data)
         proc_ex.create_upstream_data_objects()
-        self.assertEqual(proc_ex.upstream_data.count(), 1)
+        self.assertEqual(proc_ex.upstream_data.count(), 2)
         self.assertEqual(mock_create.call_count, 1)
         self.assertEqual(set(proc_ex.upstream_data.all()), set(Data.objects.all()))
 

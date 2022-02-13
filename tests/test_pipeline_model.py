@@ -191,9 +191,9 @@ class PipelineRunningTests(TestCase):
         mocks[-4].return_value = execution
         mocks[-6].side_effect = [procex1, procex2]
         pipeline = mixer.blend(Pipeline)
-        pipeline.run(params={"param1": "X", "param2": "Y"}, data_params={"param3": 100}, execution_params={"param4": 50}, profile=["X"])
+        pipeline.run(execution_id=10, params={"param1": "X", "param2": "Y"}, data_params={"param3": 100}, execution_params={"param4": 50}, profile=["X"])
         mocks[-1].assert_called_with()
-        mocks[-2].assert_called_with()
+        mocks[-2].assert_called_with(execution_id=10)
         mocks[-3].assert_called_with({"param1": "X", "param2": "Y"}, {"param3": 100}, {"param4": 50}, "1000")
         nf_pipeline.run.assert_called_with(location="/data/1000", params={1: 2, 3: 4}, profile=["X"])
         mocks[-4].assert_called_with(nf_execution, "1000", pipeline)
@@ -202,3 +202,44 @@ class PipelineRunningTests(TestCase):
         mocks[-6].assert_any_call(nf_procex1, execution)
         self.assertEqual(mocks[-7].call_count, 2)
         self.assertEqual(mocks[-8].call_count, 2)
+
+
+
+class PipelineRunningAndUpdatingTests(TestCase):
+
+    @override_settings(NEXTFLOW_DATA_ROOT="/data")
+    @patch("django_nextflow.models.Pipeline.create_pipeline")
+    @patch("django_nextflow.models.Execution.prepare_directory")
+    @patch("django_nextflow.models.Pipeline.create_params")
+    @patch("django_nextflow.models.Execution.create_from_object")
+    @patch("django_nextflow.models.Execution.remove_symlinks")
+    @patch("django_nextflow.models.ProcessExecution.create_from_object")
+    @patch("django_nextflow.models.ProcessExecution.create_downstream_data_objects")
+    @patch("django_nextflow.models.ProcessExecution.create_upstream_data_objects")
+    def test_can_run_and_update(self, *mocks):
+        nf_pipeline = Mock()
+        mocks[-1].return_value = nf_pipeline
+        mocks[-2].return_value = "1000"
+        mocks[-3].return_value = {1: 2, 3: 4}, [mixer.blend(Data), mixer.blend(Data)], [mixer.blend(Execution), mixer.blend(Execution)]
+        pipeline = mixer.blend(Pipeline)
+        execution1, execution2 = Mock(), Mock()
+        procex1_1, procex1_2, procex2_1, procex2_2 = Mock(), Mock(), Mock(), Mock()
+        execution1.process_executions = [procex1_1, procex1_2]
+        execution2.process_executions = [procex2_1, procex2_2]
+        execution = mixer.blend(Execution)
+        procex1 = mixer.blend(ProcessExecution, execution=execution)
+        procex2 = mixer.blend(ProcessExecution, execution=execution)
+        mocks[-4].return_value = execution
+        nf_pipeline.run_and_poll.return_value = [execution1, execution2]
+        pipeline.run_and_update(execution_id=10, params={"param1": "X", "param2": "Y"}, data_params={"param3": 100}, execution_params={"param4": 50}, profile=["X"])
+        mocks[-1].assert_called_with()
+        mocks[-2].assert_called_with(execution_id=10)
+        mocks[-3].assert_called_with({"param1": "X", "param2": "Y"}, {"param3": 100}, {"param4": 50}, "1000")
+        nf_pipeline.run_and_poll.assert_called_with(location="/data/1000", params={1: 2, 3: 4}, profile=["X"])
+        mocks[-4].assert_any_call(execution1, "1000", pipeline)
+        mocks[-4].assert_any_call(execution2, "1000", pipeline)
+        self.assertEqual(set(execution.upstream_data.all()), set(Data.objects.all()))
+        mocks[-6].assert_any_call(procex1_1, execution)
+        mocks[-6].assert_any_call(procex1_2, execution)
+        mocks[-6].assert_any_call(procex2_1, execution)
+        mocks[-6].assert_any_call(procex2_2, execution)

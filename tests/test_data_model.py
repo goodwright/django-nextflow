@@ -175,6 +175,13 @@ class DataCreationFromOutputTests(TestCase):
         mock_size.assert_called_with("/path/to/file")
         mock_dir.assert_called_with("/path/to/file")
         mock_zip.assert_called_with("/path/to/file", "zip", "/path/to/file")
+    
+
+    def test_can_create_ignore_if_already_exists(self):
+        process_execution = mixer.blend(ProcessExecution)
+        mixer.blend(Data, upstream_process_execution=process_execution, filename="file.txt")
+        data = Data.create_from_output("/path/to/file.txt", process_execution)
+        self.assertIsNone(data)
 
 
 

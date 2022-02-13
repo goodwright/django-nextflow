@@ -533,7 +533,7 @@ class ConvertAndReportTests(PipelineTest):
         self.assertEqual(execution.process_executions.count(), 2)
 
         # Process execution 1 is fine
-        process_execution = execution.process_executions.first()
+        process_execution = execution.process_executions.filter(name="PDB_TO_MMCIF").first()
         self.assertEqual(process_execution.execution, execution)
         self.assertEqual(process_execution.name, "PDB_TO_MMCIF")
         self.assertEqual(process_execution.process_name, "PDB_TO_MMCIF")
@@ -562,7 +562,7 @@ class ConvertAndReportTests(PipelineTest):
         self.assertEqual(data.downstream_process_executions.count(), 1)
 
         # Process execution 2 is fine
-        process_execution = execution.process_executions.last()
+        process_execution = execution.process_executions.filter(name="MMCIF_REPORT").first()
         self.assertEqual(process_execution.execution, execution)
         self.assertEqual(process_execution.name, "MMCIF_REPORT")
         self.assertEqual(process_execution.process_name, "MMCIF_REPORT")
@@ -638,7 +638,7 @@ class SplitAndReportTests(PipelineTest):
         self.assertEqual(execution.process_executions.count(), 3)
 
         # Process execution 1 is fine
-        process_execution = execution.process_executions.first()
+        process_execution = execution.process_executions.filter(name="MMCIF_TO_CHAINS").first()
         self.assertEqual(process_execution.execution, execution)
         self.assertEqual(process_execution.name, "MMCIF_TO_CHAINS")
         self.assertEqual(process_execution.process_name, "MMCIF_TO_CHAINS")
@@ -666,9 +666,8 @@ class SplitAndReportTests(PipelineTest):
             self.assertEqual(data.downstream_process_executions.count(), 1)
 
         # Process execution 2 is fine
-        process_execution = execution.process_executions.all()[1]
+        process_execution = execution.process_executions.filter(name="MMCIF_REPORT (1)").first()
         self.assertEqual(process_execution.execution, execution)
-        self.assertIn(process_execution.name, ["MMCIF_REPORT (1)", "MMCIF_REPORT (2)"])
         self.assertEqual(process_execution.process_name, "MMCIF_REPORT")
         self.assertEqual(process_execution.status, "COMPLETED")
         self.assertEqual(process_execution.stdout, "Saved!\n")
@@ -692,9 +691,8 @@ class SplitAndReportTests(PipelineTest):
         self.assertEqual(data.downstream_process_executions.count(), 0)
 
         # Process execution 3 is fine
-        process_execution = execution.process_executions.last()
+        process_execution = execution.process_executions.filter(name="MMCIF_REPORT (2)").first()
         self.assertEqual(process_execution.execution, execution)
-        self.assertIn(process_execution.name, ["MMCIF_REPORT (1)", "MMCIF_REPORT (2)"])
         self.assertEqual(process_execution.process_name, "MMCIF_REPORT")
         self.assertEqual(process_execution.status, "COMPLETED")
         self.assertEqual(process_execution.stdout, "Saved!\n")

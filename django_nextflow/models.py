@@ -173,8 +173,8 @@ class Execution(RandomIDModel):
     exit_code = models.IntegerField(null=True)
     status = models.CharField(max_length=20)
     command = models.TextField()
-    started = models.FloatField()
-    duration = models.FloatField()
+    started = models.FloatField(null=True)
+    duration = models.FloatField(null=True)
     pipeline = models.ForeignKey(Pipeline, related_name="executions", on_delete=models.CASCADE)
     upstream_executions = models.ManyToManyField("django_nextflow.Execution", related_name="downstream_executions")
         
@@ -217,24 +217,18 @@ class Execution(RandomIDModel):
     def create_from_object(execution, id, pipeline):
         """Creates a Execution model object from a nextflow.py Execution."""
 
-        existing = Execution.objects.filter(id=id).first()
-        if existing:
-            existing.stdout = execution.stdout
-            existing.stderr = execution.stderr
-            existing.status = execution.status
-            existing.returncode = execution.returncode
-            existing.started = parse_datetime(execution.datetime)
-            existing.duration = parse_duration(execution.duration)
-            existing.save()
-            return existing
-        return Execution.objects.create(
-            id=id, identifier=execution.id, command=execution.command,
-            stdout=execution.stdout, stderr=execution.stderr,
-            exit_code=execution.returncode, status=execution.status,
-            started=parse_datetime(execution.datetime),
-            duration=parse_duration(execution.duration),
-            pipeline=pipeline
-        )
+        execution_model = Execution.objects.get_or_create(
+            id=id, identifier=execution.id, pipeline=pipeline
+        )[0]
+        execution_model.stdout = execution.stdout
+        execution_model.stderr = execution.stderr
+        execution_model.status = execution.status
+        execution_model.exit_code = execution.returncode
+        execution_model.command = execution.command
+        execution_model.started = parse_datetime(execution.datetime)
+        execution_model.duration = parse_duration(execution.duration)
+        execution_model.save()
+        return execution_model
     
 
     def remove_symlinks(self):
