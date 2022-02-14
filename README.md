@@ -111,6 +111,11 @@ execution = pipeline.run(
 )
 ```
 
+The above `run` method will run the entire pipeline and create the database
+objects at the end. To create the Execution object straight away and update it
+as execution proceeds, use `run_and_update`. This can take a `post_poll`
+function which will execute every time the Execution updates.
+
 The `Data` objects above were created by running some pipeline, but you might
 want to create one from scratch without running a pipeline. You can do so either
 from a path string, or from a Django `UploadedFile` object:
@@ -123,6 +128,14 @@ data2 = Data.create_from_upload(django_upload_object)
 The file will be copied to `NEXTFLOW_UPLOADS_ROOT` in this case.
 
 ## Changelog
+
+### 0.6
+
+*14th February, 2022*
+
+- Pipelines now have a `run_and_update` method, for constant Execution updating.
+- Better Execution ID generation.
+
 
 ### 0.5
 
