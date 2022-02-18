@@ -8,6 +8,7 @@ from django.db import models
 from django.conf import settings
 from django_random_id_model import RandomIDModel, generate_random_id
 from .utils import get_file_extension, parse_datetime, parse_duration
+from .graphs import Graph
 
 class Pipeline(RandomIDModel):
     """A Nextflow pipeline, representing some .nf file."""
@@ -241,6 +242,12 @@ class Execution(RandomIDModel):
                  os.unlink(os.path.join(root, f))
         if os.path.exists(os.path.join(root, "executions")):
             shutil.rmtree(os.path.join(root, "executions"))
+    
+
+    def to_graph(self):
+        """Creates a graph object from execution."""
+        
+        return Graph(self)
 
 
 

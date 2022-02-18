@@ -126,3 +126,14 @@ class SymlinkRemovalTests(TestCase):
         self.assertEqual(mock_unlink.call_count, 2)
         mock_unlink.assert_any_call(os.path.join("/data", "20", "file1"))
         mock_unlink.assert_any_call(os.path.join("/data", "20", "file3"))
+
+
+
+class ExecutionGraphTests(TestCase):
+
+    @patch("django_nextflow.models.Graph")
+    def test_can_get_graph(self, mock_graph):
+        execution = mixer.blend(Execution)
+        graph = execution.to_graph()
+        mock_graph.assert_called_with(execution)
+        self.assertIs(graph, mock_graph.return_value)
