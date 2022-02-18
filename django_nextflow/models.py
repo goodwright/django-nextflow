@@ -368,16 +368,18 @@ class ProcessExecution(RandomIDModel):
                     execution_id = components[-5]
                     identifier = "/".join(components[-3:-1])[:9]
                     filename = components[-1]
-                    execution = Execution.objects.get(id=execution_id)
-                    process_execution = execution.process_executions.get(identifier=identifier)
-                    upstream = process_execution.downstream_data.filter(filename=filename).first()
-                    if upstream:
-                        self.upstream_data.add(upstream)
-                    else:
-                        path = os.path.join(process_execution.work_dir, filename)
-                        self.upstream_data.add(
-                            Data.create_from_output(path, process_execution)
-                        )
+                    try:
+                        execution = Execution.objects.get(id=execution_id)
+                        process_execution = execution.process_executions.get(identifier=identifier)
+                        upstream = process_execution.downstream_data.filter(filename=filename).first()
+                        if upstream:
+                            self.upstream_data.add(upstream)
+                        else:
+                            path = os.path.join(process_execution.work_dir, filename)
+                            self.upstream_data.add(
+                                Data.create_from_output(path, process_execution)
+                            )
+                    except: pass
 
 
 
