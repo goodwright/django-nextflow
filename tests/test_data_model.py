@@ -1,6 +1,6 @@
 import os
 import time
-from unittest.mock import PropertyMock, patch
+from unittest.mock import Mock, PropertyMock, patch
 from django.test.utils import override_settings
 from mixer.backend.django import mixer
 from django.test import TestCase
@@ -200,3 +200,40 @@ class DataFullPathTests(TestCase):
         mock_workdir.return_value = "/work/dir"
         data = mixer.blend(Data, filename="reads.fastq")
         self.assertEqual(data.full_path, os.path.join("/work/dir", "reads.fastq"))
+
+
+
+class UpstreamWithinExecutionTests(TestCase):
+
+    def test_no_execution(self):
+        data = mixer.blend(Data, upstream_process_execution=None)
+        self.assertFalse(data.upstream_within_execution())
+    
+
+    @patch("django_nextflow.models.Execution.to_graph")
+    def test_can_get_upstream(self, mock_graph):
+        ex = mixer.blend(Execution)
+        pe1 = mixer.blend(ProcessExecution)
+        pe2 = mixer.blend(ProcessExecution)
+        pe3 = mixer.blend(ProcessExecution)
+        pe4 = mixer.blend(ProcessExecution)
+        pe5 = mixer.blend(ProcessExecution)
+        d1 = mixer.blend(Data)
+        d2 = mixer.blend(Data)
+        d3 = mixer.blend(Data)
+        d4 = mixer.blend(Data)
+        d5 = mixer.blend(Data)
+        d6 = mixer.blend(Data)
+        d7 = mixer.blend(Data)
+        graph = Mock()
+        mock_graph.return_value = graph
+        data = mixer.blend(Data, id=1, upstream_process_execution=pe2)
+        data.up = {pe2}
+        pe2.up = {d4, d5}
+        d4.up = {pe1}
+        d5.up = {pe3}
+        pe1.up = {d1, d2}
+        pe3.up = {d7}
+        d1.up, d2.up, d7.up = set(), set(), set()
+        graph.data = {1: data}
+        self.assertEqual(set(data.upstream_within_execution()), {d4, d5, d1, d2, d7})

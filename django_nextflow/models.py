@@ -246,7 +246,7 @@ class Execution(RandomIDModel):
 
     def to_graph(self):
         """Creates a graph object from execution."""
-        
+
         return Graph(self)
 
 
@@ -477,3 +477,20 @@ class Data(RandomIDModel):
                 settings.NEXTFLOW_UPLOADS_ROOT, str(self.id),
             )
         return os.path.abspath(os.path.join(location, self.filename))
+    
+
+    def upstream_within_execution(self):
+        """Gets all data objects upstream of this one within the execution that
+        produced it. If the data was not produced by an execution, there will be
+        no upstream."""
+        
+        pe = self.upstream_process_execution
+        data_ids = []
+        if pe:
+            graph = pe.execution.to_graph()
+            self_in_graph = graph.data[self.id]
+            upstream = [up for up in self_in_graph.up]
+            while upstream:
+                upstream = [up for node in upstream for up in node.up]
+                for d in upstream: data_ids.append(d.id)
+        return Data.objects.filter(id__in=data_ids)
