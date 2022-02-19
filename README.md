@@ -127,7 +127,19 @@ data2 = Data.create_from_upload(django_upload_object)
 
 The file will be copied to `NEXTFLOW_UPLOADS_ROOT` in this case.
 
+You can determine all the downstream data of a data object within its generating
+execution using the `downstream_within_execution` method. Likewise the
+`upstream_within_execution` method will return all upstream data within the
+execution.
+
 ## Changelog
+
+### 0.7
+
+*19th February, 2022*
+
+- Executions can now generate a graph representation of themselves.
+- Data objects can now detect all their up/downstream data within an execution.
 
 ### 0.6
 
