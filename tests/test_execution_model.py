@@ -15,6 +15,8 @@ class ExecutionCreationTests(TestCase):
         )
         execution.full_clean()
         self.assertEqual(str(execution), "good_run")
+        self.assertEqual(execution.alias, "")
+        self.assertEqual(execution.notes, "")
         self.assertEqual(list(execution.process_executions.all()), [])
         self.assertEqual(list(execution.upstream_data.all()), [])
 
