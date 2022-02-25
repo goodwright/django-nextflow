@@ -17,6 +17,7 @@ class DataCreationTests(TestCase):
         data.full_clean()
         self.assertEqual(str(data), "reads.fastq")
         self.assertFalse(data.is_directory)
+        self.assertEqual(data.label, "")
         self.assertEqual(data.notes, "")
         self.assertLess(abs(data.created - time.time()), 1)
         self.assertEqual(data.downstream_executions.count(), 0)
