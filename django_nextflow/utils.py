@@ -1,3 +1,4 @@
+import hashlib
 from datetime import datetime
 
 def parse_datetime(dt):
@@ -30,3 +31,13 @@ def get_file_extension(filename):
     if filename.endswith(".gz"):
         return ".".join(filename.split(".")[-2:])
     return filename.split(".")[-1] if "." in filename else ""
+
+
+def get_file_hash(path):
+    """Gets the MD5 hash of a file from its path."""
+    
+    hash_md5 = hashlib.md5()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_md5.update(chunk)
+    return hash_md5.hexdigest()

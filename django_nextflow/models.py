@@ -7,7 +7,7 @@ from random import randint
 from django.db import models
 from django.conf import settings
 from django_random_id_model import RandomIDModel, generate_random_id
-from .utils import get_file_extension, parse_datetime, parse_duration
+from .utils import get_file_extension, get_file_hash, parse_datetime, parse_duration
 from .graphs import Graph
 
 class Pipeline(RandomIDModel):
@@ -403,6 +403,7 @@ class Data(RandomIDModel):
     label = models.CharField(max_length=80, default="", blank=True)
     notes = models.TextField(default="", blank=True)
     is_removed = models.BooleanField(default=False)
+    md5 = models.CharField(max_length=64, default="")
     upstream_process_execution = models.ForeignKey(ProcessExecution, null=True, related_name="downstream_data", on_delete=models.CASCADE)
     downstream_executions = models.ManyToManyField(Execution, related_name="upstream_data")
     downstream_process_executions = models.ManyToManyField(ProcessExecution, related_name="upstream_data")
@@ -427,6 +428,10 @@ class Data(RandomIDModel):
         shutil.copy(path, new_path)
         if data.is_directory:
             shutil.make_archive(new_path, "zip", new_path)
+            data.md5 = get_file_hash(new_path + ".zip")
+        else:
+            data.md5 = get_file_hash(new_path)
+        data.save()
         return data
     
 
@@ -449,6 +454,8 @@ class Data(RandomIDModel):
                 f.write(chunk)
         if data.is_directory:
             shutil.unpack_archive(new_path, location, "zip")
+        data.md5 = get_file_hash(new_path)
+        data.save()
         return data
     
 

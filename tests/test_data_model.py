@@ -11,7 +11,7 @@ class DataCreationTests(TestCase):
 
     def test_data_creation(self):
         data = Data.objects.create(
-            filename="reads.fastq", size=2048, filetype="fastq",
+            filename="reads.fastq", size=2048, filetype="fastq", md5="x",
             upstream_process_execution=mixer.blend(ProcessExecution)
         )
         data.full_clean()
@@ -34,13 +34,16 @@ class DataCreationFromPathTests(TestCase):
     @patch("os.path.isdir")
     @patch("os.mkdir")
     @patch("shutil.copy")
-    def test_can_create_from_path(self, mock_copy, mock_mk, mock_dir, mock_size, mock_ext):
+    @patch("django_nextflow.models.get_file_hash")
+    def test_can_create_from_path(self, mock_md5, mock_copy, mock_mk, mock_dir, mock_size, mock_ext):
         mock_ext.return_value = "txt"
         mock_size.return_value = 100
         mock_dir.return_value = False
+        mock_md5.return_value = "X"
         data = Data.create_from_path("/path/to/file")
         self.assertEqual(data.filename, "file")
         self.assertEqual(data.filetype, "txt")
+        self.assertEqual(data.md5, "X")
         self.assertEqual(data.size, 100)
         self.assertFalse(data.is_directory)
         self.assertLess(abs(data.created - time.time()), 1)
@@ -50,6 +53,7 @@ class DataCreationFromPathTests(TestCase):
         mock_copy.assert_called_with("/path/to/file", os.path.join(
             "/uploads", str(data.id), "file"
         ))
+        mock_md5.assert_called_with(os.path.join(os.path.join("/uploads", str(data.id), "file")))
     
 
     @override_settings(NEXTFLOW_UPLOADS_ROOT="/uploads")
@@ -59,13 +63,16 @@ class DataCreationFromPathTests(TestCase):
     @patch("os.mkdir")
     @patch("shutil.copy")
     @patch("shutil.make_archive")
-    def test_can_create_directory_from_path(self, mock_zip, mock_copy, mock_mk, mock_dir, mock_size, mock_ext):
+    @patch("django_nextflow.models.get_file_hash")
+    def test_can_create_directory_from_path(self, mock_md5, mock_zip, mock_copy, mock_mk, mock_dir, mock_size, mock_ext):
         mock_ext.return_value = "txt"
         mock_size.return_value = 100
         mock_dir.return_value = True
+        mock_md5.return_value = "X"
         data = Data.create_from_path("/path/to/file")
         self.assertEqual(data.filename, "file")
         self.assertEqual(data.filetype, "txt")
+        self.assertEqual(data.md5, "X")
         self.assertEqual(data.size, 100)
         self.assertTrue(data.is_directory)
         self.assertLess(abs(data.created - time.time()), 1)
@@ -79,6 +86,7 @@ class DataCreationFromPathTests(TestCase):
             os.path.join("/uploads", str(data.id), "file"),
             "zip", os.path.join("/uploads", str(data.id), "file"),
         )
+        mock_md5.assert_called_with(os.path.join(os.path.join("/uploads", str(data.id), "file.zip")))
 
 
 
@@ -88,12 +96,15 @@ class DataCreationFromUploadedFileTests(TestCase):
     @patch("django_nextflow.models.get_file_extension")
     @patch("os.mkdir")
     @patch("builtins.open")
-    def test_can_create_from_upload(self, mock_open, mock_mk, mock_ext):
+    @patch("django_nextflow.models.get_file_hash")
+    def test_can_create_from_upload(self, mock_md5, mock_open, mock_mk, mock_ext):
         upload = SimpleUploadedFile(name="file.txt", content=b"abc")
         mock_ext.return_value = "txt"
+        mock_md5.return_value = "X"
         data = Data.create_from_upload(upload)
         self.assertEqual(data.filename, "file.txt")
         self.assertEqual(data.filetype, "txt")
+        self.assertEqual(data.md5, "X")
         self.assertEqual(data.size, 3)
         self.assertFalse(data.is_directory)
         self.assertLess(abs(data.created - time.time()), 1)
@@ -104,6 +115,8 @@ class DataCreationFromUploadedFileTests(TestCase):
             "/uploads", str(data.id), "file.txt"
         ), "wb+")
         mock_open.return_value.__enter__.return_value.write.assert_called_with(b"abc")
+        mock_md5.assert_called_with(os.path.join("/uploads", str(data.id), "file.txt"))
+
     
 
     @override_settings(NEXTFLOW_UPLOADS_ROOT="/uploads")
@@ -111,12 +124,15 @@ class DataCreationFromUploadedFileTests(TestCase):
     @patch("os.mkdir")
     @patch("builtins.open")
     @patch("shutil.unpack_archive")
-    def test_can_create_directory_from_upload(self, mock_unzip, mock_open, mock_mk, mock_ext):
+    @patch("django_nextflow.models.get_file_hash")
+    def test_can_create_directory_from_upload(self, mock_md5, mock_unzip, mock_open, mock_mk, mock_ext):
         upload = SimpleUploadedFile(name="file.zip", content=b"abc")
         mock_ext.return_value = ""
+        mock_md5.return_value = "X"
         data = Data.create_from_upload(upload, is_directory=True)
         self.assertEqual(data.filename, "file")
         self.assertEqual(data.filetype, "")
+        self.assertEqual(data.md5, "X")
         self.assertEqual(data.size, 3)
         self.assertTrue(data.is_directory)
         self.assertLess(abs(data.created - time.time()), 1)
@@ -131,6 +147,7 @@ class DataCreationFromUploadedFileTests(TestCase):
             os.path.join("/uploads", str(data.id), "file.zip"),
             os.path.join("/uploads", str(data.id)), "zip"
         )
+        mock_md5.assert_called_with(os.path.join("/uploads", str(data.id), "file.zip"))
 
 
 
