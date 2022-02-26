@@ -402,6 +402,7 @@ class Data(RandomIDModel):
     is_directory = models.BooleanField(default=False)
     label = models.CharField(max_length=80, default="", blank=True)
     notes = models.TextField(default="", blank=True)
+    is_removed = models.BooleanField(default=False)
     upstream_process_execution = models.ForeignKey(ProcessExecution, null=True, related_name="downstream_data", on_delete=models.CASCADE)
     downstream_executions = models.ManyToManyField(Execution, related_name="upstream_data")
     downstream_process_executions = models.ManyToManyField(ProcessExecution, related_name="upstream_data")
@@ -515,3 +516,13 @@ class Data(RandomIDModel):
                 downstream = [down for node in downstream for down in node.down]
                 for d in downstream: data_ids.append(d.id)
         return Data.objects.filter(id__in=data_ids)
+    
+
+    def remove(self):
+        """Removes the file on disk and sets is_removed to True."""
+        
+        try:
+            os.remove(self.full_path)
+        except FileNotFoundError: pass
+        self.is_removed = True
+        self.save()

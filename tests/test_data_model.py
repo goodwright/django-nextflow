@@ -19,6 +19,7 @@ class DataCreationTests(TestCase):
         self.assertFalse(data.is_directory)
         self.assertEqual(data.label, "")
         self.assertEqual(data.notes, "")
+        self.assertFalse(data.is_removed)
         self.assertLess(abs(data.created - time.time()), 1)
         self.assertEqual(data.downstream_executions.count(), 0)
         self.assertEqual(data.downstream_process_executions.count(), 0)
@@ -276,3 +277,29 @@ class DownstreamWithinExecutionTests(TestCase):
         d1.down, d2.down, d6.down = set(), set(), set()
         graph.data = {1: data}
         self.assertEqual(set(data.downstream_within_execution()), {d4, d6, d5, d1, d2})
+
+
+
+class DataRemovalTests(TestCase):
+
+    @override_settings(NEXTFLOW_DATA_ROOT="/data")
+    @patch("django_nextflow.models.Data.full_path", new_callable=PropertyMock)
+    @patch("os.remove")
+    def test_can_remove_file(self, mock_remove, mock_path):
+        data = mixer.blend(Data)
+        self.assertFalse(data.is_removed)
+        data.remove()
+        self.assertTrue(data.is_removed)
+        mock_remove.assert_called_with(mock_path.return_value)
+    
+
+    @override_settings(NEXTFLOW_DATA_ROOT="/data")
+    @patch("django_nextflow.models.Data.full_path", new_callable=PropertyMock)
+    @patch("os.remove")
+    def test_can_remove_file_again(self, mock_remove, mock_path):
+        data = mixer.blend(Data)
+        mock_remove.side_effect = FileNotFoundError
+        self.assertFalse(data.is_removed)
+        data.remove()
+        self.assertTrue(data.is_removed)
+        mock_remove.assert_called_with(mock_path.return_value)
