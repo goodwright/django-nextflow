@@ -134,6 +134,15 @@ execution.
 
 ## Changelog
 
+### 0.8
+
+*27th February, 2022*
+
+- Execution objects now have label and notes fields.
+- Data objects now have label and notes fields.
+- Added method to 'remove' data objects rather than delete them entirely.
+- Data objects now have MD5 hash upon creation.
+
 ### 0.7
 
 *19th February, 2022*
