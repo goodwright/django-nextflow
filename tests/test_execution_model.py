@@ -26,6 +26,15 @@ class ExecutionFinishedTests(TestCase):
     def test_can_get_finish_time(self):
         execution = mixer.blend(Execution, started=1000, duration=60)
         self.assertEqual(execution.finished, 1060)
+    
+
+    def test_can_handle_missing_values(self):
+        execution = mixer.blend(Execution, started=None, duration=60)
+        self.assertIsNone(execution.finished)
+        execution = mixer.blend(Execution, started=1000, duration=None)
+        self.assertIsNone(execution.finished)
+        execution = mixer.blend(Execution, started=None, duration=None)
+        self.assertIsNone(execution.finished)
 
 
 

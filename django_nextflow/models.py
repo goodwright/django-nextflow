@@ -190,7 +190,8 @@ class Execution(RandomIDModel):
     def finished(self):
         """The timestamp for when the execution stopped."""
 
-        return self.started + self.duration
+        if self.started is not None and self.duration is not None:
+            return self.started + self.duration
     
 
     def get_log_text(self):
