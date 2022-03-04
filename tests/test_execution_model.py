@@ -19,6 +19,13 @@ class ExecutionCreationTests(TestCase):
         self.assertEqual(execution.notes, "")
         self.assertEqual(list(execution.process_executions.all()), [])
         self.assertEqual(list(execution.upstream_data.all()), [])
+    
+
+    def test_execution_order(self):
+        e1 = mixer.blend(Execution, started=200)
+        e2 = mixer.blend(Execution, started=None)
+        e3 = mixer.blend(Execution, started=100)
+        self.assertEqual(list(Execution.objects.all()), [e2, e3, e1])
 
 
 class ExecutionFinishedTests(TestCase):

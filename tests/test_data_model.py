@@ -23,6 +23,13 @@ class DataCreationTests(TestCase):
         self.assertLess(abs(data.created - time.time()), 1)
         self.assertEqual(data.downstream_executions.count(), 0)
         self.assertEqual(data.downstream_process_executions.count(), 0)
+    
+
+    def test_data_order(self):
+        d1 = mixer.blend(Data, filename="C")
+        d2 = mixer.blend(Data, filename="A")
+        d3 = mixer.blend(Data, filename="B")
+        self.assertEqual(list(Data.objects.all()), [d2, d3, d1])
 
 
 

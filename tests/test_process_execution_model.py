@@ -18,6 +18,13 @@ class ProcessExecutionCreationTests(TestCase):
         self.assertEqual(str(execution), "FASTQC (1)")
         self.assertEqual(list(execution.downstream_data.all()), [])
         self.assertEqual(list(execution.upstream_data.all()), [])
+    
+
+    def test_process_execution_order(self):
+        p1 = mixer.blend(ProcessExecution, started=200)
+        p2 = mixer.blend(ProcessExecution, started=None)
+        p3 = mixer.blend(ProcessExecution, started=100)
+        self.assertEqual(list(ProcessExecution.objects.all()), [p2, p3, p1])
 
 
 

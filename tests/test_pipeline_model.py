@@ -17,6 +17,13 @@ class PipelineCreationTests(TestCase):
         )
         self.assertEqual(str(pipeline), "Run analysis")
         self.assertEqual(list(pipeline.executions.all()), [])
+    
+
+    def test_pipeline_order(self):
+        p1 = mixer.blend(Pipeline, name="C")
+        p2 = mixer.blend(Pipeline, name="A")
+        p3 = mixer.blend(Pipeline, name="B")
+        self.assertEqual(list(Pipeline.objects.all()), [p2, p3, p1])
 
 
 

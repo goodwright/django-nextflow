@@ -13,6 +13,9 @@ from .graphs import Graph
 class Pipeline(RandomIDModel):
     """A Nextflow pipeline, representing some .nf file."""
 
+    class Meta:
+        ordering = ["name"]
+
     name = models.CharField(max_length=200)
     description = models.TextField()
     path = models.CharField(max_length=300)
@@ -168,6 +171,9 @@ class Pipeline(RandomIDModel):
 class Execution(RandomIDModel):
     """A record of the running of some Nextflow file."""
 
+    class Meta:
+        ordering = ["started"]
+
     identifier = models.CharField(max_length=100)
     stdout = models.TextField()
     stderr = models.TextField()
@@ -180,7 +186,6 @@ class Execution(RandomIDModel):
     notes = models.TextField(default="", blank=True)
     pipeline = models.ForeignKey(Pipeline, related_name="executions", on_delete=models.CASCADE)
     upstream_executions = models.ManyToManyField("django_nextflow.Execution", related_name="downstream_executions")
-        
 
     def __str__(self):
         return self.identifier
@@ -255,6 +260,9 @@ class Execution(RandomIDModel):
 
 class ProcessExecution(RandomIDModel):
     """A record of the execution of a process."""
+    
+    class Meta:
+        ordering = ["started"]
 
     name = models.CharField(max_length=200)
     process_name = models.CharField(max_length=200)
@@ -394,6 +402,9 @@ class ProcessExecution(RandomIDModel):
 
 class Data(RandomIDModel):
     """A data file."""
+
+    class Meta:
+        ordering = ["filename"]
 
     filename = models.CharField(max_length=1000)
     filetype = models.CharField(max_length=50)
