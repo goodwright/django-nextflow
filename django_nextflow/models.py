@@ -221,9 +221,8 @@ class Execution(RandomIDModel):
     def create_from_object(execution, id, pipeline):
         """Creates a Execution model object from a nextflow.py Execution."""
 
-        execution_model = Execution.objects.get_or_create(
-            id=id, identifier=execution.id, pipeline=pipeline
-        )[0]
+        execution_model = Execution.objects.get_or_create(id=id, pipeline=pipeline)[0]
+        execution_model.identifier = execution.id
         execution_model.stdout = execution.stdout
         execution_model.stderr = execution.stderr
         execution_model.status = execution.status

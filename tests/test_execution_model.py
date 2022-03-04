@@ -101,7 +101,7 @@ class CreationFromObjectTests(TestCase):
             stdout="out", stderr="err", returncode=0, duration="1s"
         )
         pipeline = mixer.blend(Pipeline)
-        ex = mixer.blend(Execution, id=1234, identifier="x_y", pipeline=pipeline)
+        ex = mixer.blend(Execution, id=1234, pipeline=pipeline)
         execution = Execution.create_from_object(execution, 1234, pipeline)
         self.assertEqual(ex, execution)
         self.assertEqual(execution.id, 1234)
