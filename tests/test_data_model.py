@@ -164,21 +164,25 @@ class DataCreationFromOutputTests(TestCase):
     @patch("os.path.isdir")
     @patch("django_nextflow.models.get_file_extension")
     @patch("os.path.getsize")
-    def test_can_create_from_output(self, mock_size, mock_ext, mock_dir):
+    @patch("django_nextflow.models.get_file_hash")
+    def test_can_create_from_output(self, mock_md5, mock_size, mock_ext, mock_dir):
         process_execution = mixer.blend(ProcessExecution)
         mock_ext.return_value = "txt"
         mock_size.return_value = 200
+        mock_md5.return_value = "X"
         mock_dir.return_value = False
         data = Data.create_from_output("/path/to/file.txt", process_execution)
         self.assertEqual(data.filename, "file.txt")
         self.assertEqual(data.filetype, "txt")
         self.assertEqual(data.size, 200)
+        self.assertEqual(data.md5, "X")
         self.assertFalse(data.is_directory)
         self.assertLess(abs(data.created - time.time()), 1)
         self.assertIs(data.upstream_process_execution, process_execution)
         mock_ext.assert_called_with("file.txt")
         mock_size.assert_called_with("/path/to/file.txt")
         mock_dir.assert_called_with("/path/to/file.txt")
+        mock_md5.assert_called_with(os.path.join("/path/to/file.txt"))
     
 
     @override_settings(NEXTFLOW_UPLOADS_ROOT="/uploads")
@@ -186,15 +190,18 @@ class DataCreationFromOutputTests(TestCase):
     @patch("django_nextflow.models.get_file_extension")
     @patch("os.path.getsize")
     @patch("shutil.make_archive")
-    def test_can_create_directory_from_output(self, mock_zip, mock_size, mock_ext, mock_dir):
+    @patch("django_nextflow.models.get_file_hash")
+    def test_can_create_directory_from_output(self, mock_md5, mock_zip, mock_size, mock_ext, mock_dir):
         process_execution = mixer.blend(ProcessExecution)
         mock_ext.return_value = ""
         mock_size.return_value = 200
+        mock_md5.return_value = "X"
         mock_dir.return_value = True
         data = Data.create_from_output("/path/to/file", process_execution)
         self.assertEqual(data.filename, "file")
         self.assertEqual(data.filetype, "")
         self.assertEqual(data.size, 200)
+        self.assertEqual(data.md5, "X")
         self.assertTrue(data.is_directory)
         self.assertLess(abs(data.created - time.time()), 1)
         self.assertIs(data.upstream_process_execution, process_execution)
@@ -202,9 +209,10 @@ class DataCreationFromOutputTests(TestCase):
         mock_size.assert_called_with("/path/to/file")
         mock_dir.assert_called_with("/path/to/file")
         mock_zip.assert_called_with("/path/to/file", "zip", "/path/to/file")
+        mock_md5.assert_called_with(os.path.join("/path/to/file.zip"))
     
 
-    def test_can_create_ignore_if_already_exists(self):
+    def test_can_ignore_if_already_exists(self):
         process_execution = mixer.blend(ProcessExecution)
         mixer.blend(Data, upstream_process_execution=process_execution, filename="file.txt")
         data = Data.create_from_output("/path/to/file.txt", process_execution)

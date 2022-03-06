@@ -165,8 +165,10 @@ class Pipeline(RandomIDModel):
                 process_execution_model.create_upstream_data_objects()
             if post_poll:
                 post_poll(execution_model)
-        execution_model.remove_symlinks()
-        return execution_model
+        try:
+            execution_model.remove_symlinks()
+            return execution_model
+        except: pass
 
 class Execution(RandomIDModel):
     """A record of the running of some Nextflow file."""
@@ -485,7 +487,12 @@ class Data(RandomIDModel):
             size=os.path.getsize(path),
             upstream_process_execution=process_execution
         )
-        if is_directory: shutil.make_archive(path, "zip", path)
+        if is_directory:
+            shutil.make_archive(path, "zip", path)
+            data.md5 = get_file_hash(path + ".zip")
+        else:
+            data.md5 = get_file_hash(path)
+        data.save()
         return data
 
     
@@ -531,7 +538,9 @@ class Data(RandomIDModel):
             self_in_graph = graph.data[self.id]
             downstream = [down for down in self_in_graph.down]
             while downstream:
-                downstream = [down for node in downstream for down in node.down]
+                downstream = [down for node in downstream for down in (
+                    node.down if "down" in dir(node) else []
+                )]
                 for d in downstream: data_ids.append(d.id)
         return Data.objects.filter(id__in=data_ids)
     
