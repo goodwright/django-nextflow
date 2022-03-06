@@ -19,6 +19,7 @@ class DataCreationTests(TestCase):
         self.assertFalse(data.is_directory)
         self.assertEqual(data.label, "")
         self.assertEqual(data.notes, "")
+        self.assertTrue(data.is_ready)
         self.assertFalse(data.is_removed)
         self.assertLess(abs(data.created - time.time()), 1)
         self.assertEqual(data.downstream_executions.count(), 0)
@@ -155,6 +156,137 @@ class DataCreationFromUploadedFileTests(TestCase):
             os.path.join("/uploads", str(data.id)), "zip"
         )
         mock_md5.assert_called_with(os.path.join("/uploads", str(data.id), "file.zip"))
+
+
+
+class DataCreationFromUploadedFileTests(TestCase):
+
+    @override_settings(NEXTFLOW_UPLOADS_ROOT="/uploads")
+    @patch("django_nextflow.models.get_file_extension")
+    @patch("os.mkdir")
+    @patch("builtins.open")
+    def test_can_create_first_blob(self, mock_open, mock_mk, mock_ext):
+        upload = SimpleUploadedFile(name="blob", content=b"abc")
+        mock_ext.return_value = "txt"
+        data = Data.create_from_partial_upload(upload, filename="file.txt")
+        self.assertEqual(data.filename, "file.txt")
+        self.assertEqual(data.filetype, "txt")
+        self.assertEqual(data.size, 0)
+        self.assertLess(abs(data.created - time.time()), 1)
+        self.assertFalse(data.is_directory)
+        self.assertFalse(data.is_removed)
+        self.assertFalse(data.is_ready)
+        self.assertEqual(data.md5, "")
+        mock_ext.assert_called_with("file.txt")
+        mock_mk.assert_called_with(os.path.join("/uploads", str(data.id)))
+        mock_open.assert_called_with(os.path.join(
+            "/uploads", str(data.id), "file.txt"
+        ), "wb")
+        mock_open.return_value.__enter__.return_value.write.assert_called_with(b"abc")
+    
+
+    @override_settings(NEXTFLOW_UPLOADS_ROOT="/uploads")
+    @patch("builtins.open")
+    def test_can_add_middle_blob(self, mock_open):
+        data = mixer.blend(
+            Data, filename="file.txt", filetype="txt", size=0, created=100,
+            is_directory=False, is_ready=False, md5=""
+        )
+        upload = SimpleUploadedFile(name="blob", content=b"def")
+        data = Data.create_from_partial_upload(upload, data=data)
+        self.assertEqual(data.filename, "file.txt")
+        self.assertEqual(data.filetype, "txt")
+        self.assertEqual(data.size, 0)
+        self.assertLess(abs(data.created - time.time()), 1)
+        self.assertFalse(data.is_directory)
+        self.assertFalse(data.is_removed)
+        self.assertFalse(data.is_ready)
+        self.assertEqual(data.md5, "")
+        mock_open.assert_called_with(os.path.join("/uploads", str(data.id), "file.txt"), "ab")
+        mock_open.return_value.__enter__.return_value.write.assert_called_with(b"def")
+    
+
+    @override_settings(NEXTFLOW_UPLOADS_ROOT="/uploads")
+    @patch("builtins.open")
+    @patch("os.path.getsize")
+    @patch("django_nextflow.models.get_file_hash")
+    def test_can_add_final_blob(self, mock_md5, mock_size, mock_open):
+        data = mixer.blend(
+            Data, filename="file.txt", filetype="txt", size=0, created=100,
+            is_directory=False, is_ready=False, md5=""
+        )
+        mock_size.return_value = 9
+        mock_md5.return_value = "hash"
+        upload = SimpleUploadedFile(name="blob", content=b"ghi")
+        data = Data.create_from_partial_upload(upload, data=data, final=True)
+        self.assertEqual(data.filename, "file.txt")
+        self.assertEqual(data.filetype, "txt")
+        self.assertEqual(data.size, 9)
+        self.assertLess(abs(data.created - time.time()), 1)
+        self.assertFalse(data.is_directory)
+        self.assertFalse(data.is_removed)
+        self.assertTrue(data.is_ready)
+        self.assertEqual(data.md5, "hash")
+        mock_open.assert_called_with(os.path.join("/uploads", str(data.id), "file.txt"), "ab")
+        mock_open.return_value.__enter__.return_value.write.assert_called_with(b"ghi")
+        mock_md5.assert_called_with(os.path.join("/uploads", str(data.id), "file.txt"))
+        mock_size.assert_called_with(os.path.join("/uploads", str(data.id), "file.txt"))
+    
+
+    @override_settings(NEXTFLOW_UPLOADS_ROOT="/uploads")
+    @patch("django_nextflow.models.get_file_extension")
+    @patch("os.mkdir")
+    @patch("builtins.open")
+    def test_can_create_first_directory_blob(self, mock_open, mock_mk, mock_ext):
+        upload = SimpleUploadedFile(name="blob", content=b"abc")
+        mock_ext.return_value = ""
+        data = Data.create_from_partial_upload(upload, filename="file.zip", is_directory=True)
+        self.assertEqual(data.filename, "file")
+        self.assertEqual(data.filetype, "")
+        self.assertEqual(data.size, 0)
+        self.assertLess(abs(data.created - time.time()), 1)
+        self.assertTrue(data.is_directory)
+        self.assertFalse(data.is_removed)
+        self.assertFalse(data.is_ready)
+        self.assertEqual(data.md5, "")
+        mock_ext.assert_called_with("file")
+        mock_mk.assert_called_with(os.path.join("/uploads", str(data.id)))
+        mock_open.assert_called_with(os.path.join(
+            "/uploads", str(data.id), "file.zip"
+        ), "wb")
+        mock_open.return_value.__enter__.return_value.write.assert_called_with(b"abc")
+    
+
+    @override_settings(NEXTFLOW_UPLOADS_ROOT="/uploads")
+    @patch("builtins.open")
+    @patch("os.path.getsize")
+    @patch("django_nextflow.models.get_file_hash")
+    @patch("shutil.unpack_archive")
+    def test_can_add_final_directory_blob(self, mock_unpack, mock_md5, mock_size, mock_open):
+        data = mixer.blend(
+            Data, filename="file", filetype="", size=0, created=100,
+            is_directory=True, is_ready=False, md5=""
+        )
+        mock_size.return_value = 9
+        mock_md5.return_value = "hash"
+        upload = SimpleUploadedFile(name="blob", content=b"ghi")
+        data = Data.create_from_partial_upload(upload, data=data, final=True)
+        self.assertEqual(data.filename, "file")
+        self.assertEqual(data.filetype, "")
+        self.assertEqual(data.size, 9)
+        self.assertLess(abs(data.created - time.time()), 1)
+        self.assertTrue(data.is_directory)
+        self.assertFalse(data.is_removed)
+        self.assertTrue(data.is_ready)
+        self.assertEqual(data.md5, "hash")
+        mock_unpack.assert_called_with(
+            os.path.join("/uploads", str(data.id), "file.zip"),
+            os.path.join("/uploads", str(data.id)), "zip"
+        )
+        mock_open.assert_called_with(os.path.join("/uploads", str(data.id), "file.zip"), "ab")
+        mock_open.return_value.__enter__.return_value.write.assert_called_with(b"ghi")
+        mock_md5.assert_called_with(os.path.join("/uploads", str(data.id), "file.zip"))
+        mock_size.assert_called_with(os.path.join("/uploads", str(data.id), "file.zip"))
 
 
 

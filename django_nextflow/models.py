@@ -415,6 +415,7 @@ class Data(RandomIDModel):
     is_directory = models.BooleanField(default=False)
     label = models.CharField(max_length=80, default="", blank=True)
     notes = models.TextField(default="", blank=True)
+    is_ready = models.BooleanField(default=True)
     is_removed = models.BooleanField(default=False)
     md5 = models.CharField(max_length=64, default="")
     upstream_process_execution = models.ForeignKey(ProcessExecution, null=True, related_name="downstream_data", on_delete=models.CASCADE)
@@ -471,6 +472,40 @@ class Data(RandomIDModel):
         data.save()
         return data
     
+
+    @staticmethod
+    def create_from_partial_upload(blob, filename="blob", data=None, final=False, is_directory=False):
+        """Updates a data object froma django UploadedFile."""
+
+
+        if not data:
+            filename_to_write_to, data_filename = filename, filename
+            if is_directory and filename.endswith(".zip"):
+                data_filename = data_filename[:-4]
+            data = Data.objects.create(
+                filename=data_filename, filetype=get_file_extension(data_filename),
+                size=0, is_ready=False, is_directory=is_directory
+            )
+            location = os.path.join(settings.NEXTFLOW_UPLOADS_ROOT, str(data.id))
+            os.mkdir(location)
+            full_path = os.path.join(location, filename_to_write_to)
+            with open(full_path, "wb") as f: f.write(blob.read())
+        else:
+            filename_to_write_to, data_filename = data.filename, data.filename
+            if data.is_directory: filename_to_write_to += ".zip"
+            location = os.path.join(settings.NEXTFLOW_UPLOADS_ROOT, str(data.id))
+            full_path = os.path.join(location, filename_to_write_to)
+            with open(full_path, "ab") as f: f.write(blob.read())
+            data.created = time.time()
+        if final:
+            data.is_ready = True
+            if data.is_directory:
+                shutil.unpack_archive(full_path, location, "zip")
+            data.md5 = get_file_hash(full_path)
+            data.size = os.path.getsize(full_path)
+        data.save()
+        return data
+
 
     @staticmethod
     def create_from_output(path, process_execution):
