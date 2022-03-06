@@ -125,6 +125,14 @@ data1 = Data.create_from_path("/path/to/file.txt")
 data2 = Data.create_from_upload(django_upload_object)
 ```
 
+You can create a Data object in chunks using:
+
+```python
+data = Data.create_from_partial_upload(django_upload_object1, filename="large-file.txt")
+data = Data.create_from_partial_upload(django_upload_object2, data=data)
+data = Data.create_from_partial_upload(django_upload_object3, data=data, final=True)
+```
+
 The file will be copied to `NEXTFLOW_UPLOADS_ROOT` in this case.
 
 You can determine all the downstream data of a data object within its generating
@@ -133,6 +141,17 @@ execution using the `downstream_within_execution` method. Likewise the
 execution.
 
 ## Changelog
+
+### 0.9
+
+*6th March, 2022*
+
+- Data objects can now be created from upload objects blob by blob.
+- `is_ready`field added to Data to denote those in process of being created.
+- Models now have default ordering.
+- Executions can now be manually created with very minimal information.
+- Fixed missing MD5 hash for pipeline output files.
+- Fixed issue with generating finished time when values were missing.
 
 ### 0.8
 
