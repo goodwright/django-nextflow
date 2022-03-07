@@ -143,6 +143,12 @@ execution.
 
 ## Changelog
 
+### 0.9.1
+
+*7th March, 2022*
+
+- Partial data upload will now optionally verify filesize matches expected.
+
 ### 0.9
 
 *6th March, 2022*
