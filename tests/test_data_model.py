@@ -171,7 +171,7 @@ class DataCreationFromUploadedFileTests(TestCase):
         data = Data.create_from_partial_upload(upload, filename="file.txt")
         self.assertEqual(data.filename, "file.txt")
         self.assertEqual(data.filetype, "txt")
-        self.assertEqual(data.size, 0)
+        self.assertEqual(data.size, 3)
         self.assertLess(abs(data.created - time.time()), 1)
         self.assertFalse(data.is_directory)
         self.assertFalse(data.is_removed)
@@ -187,16 +187,18 @@ class DataCreationFromUploadedFileTests(TestCase):
 
     @override_settings(NEXTFLOW_UPLOADS_ROOT="/uploads")
     @patch("builtins.open")
-    def test_can_add_middle_blob(self, mock_open):
+    @patch("os.path.getsize")
+    def test_can_add_middle_blob(self, mock_size, mock_open):
         data = mixer.blend(
             Data, filename="file.txt", filetype="txt", size=0, created=100,
             is_directory=False, is_ready=False, md5=""
         )
+        mock_size.return_value = 6
         upload = SimpleUploadedFile(name="blob", content=b"def")
         data = Data.create_from_partial_upload(upload, data=data)
         self.assertEqual(data.filename, "file.txt")
         self.assertEqual(data.filetype, "txt")
-        self.assertEqual(data.size, 0)
+        self.assertEqual(data.size, 6)
         self.assertLess(abs(data.created - time.time()), 1)
         self.assertFalse(data.is_directory)
         self.assertFalse(data.is_removed)
@@ -204,6 +206,64 @@ class DataCreationFromUploadedFileTests(TestCase):
         self.assertEqual(data.md5, "")
         mock_open.assert_called_with(os.path.join("/uploads", str(data.id), "file.txt"), "ab")
         mock_open.return_value.__enter__.return_value.write.assert_called_with(b"def")
+    
+
+    @override_settings(NEXTFLOW_UPLOADS_ROOT="/uploads")
+    @patch("builtins.open")
+    @patch("os.path.getsize")
+    def test_can_add_middle_blob_and_validate_size(self, mock_size, mock_open):
+        data = mixer.blend(
+            Data, filename="file.txt", filetype="txt", size=3, created=100,
+            is_directory=False, is_ready=False, md5=""
+        )
+        mock_size.return_value = 6
+        upload = SimpleUploadedFile(name="blob", content=b"def")
+        data = Data.create_from_partial_upload(upload, data=data, filesize=3)
+        self.assertEqual(data.filename, "file.txt")
+        self.assertEqual(data.filetype, "txt")
+        self.assertEqual(data.size, 6)
+        self.assertLess(abs(data.created - time.time()), 1)
+        self.assertFalse(data.is_directory)
+        self.assertFalse(data.is_removed)
+        self.assertFalse(data.is_ready)
+        self.assertEqual(data.md5, "")
+        mock_open.assert_called_with(os.path.join("/uploads", str(data.id), "file.txt"), "ab")
+        mock_open.return_value.__enter__.return_value.write.assert_called_with(b"def")
+    
+
+    @override_settings(NEXTFLOW_UPLOADS_ROOT="/uploads")
+    @patch("builtins.open")
+    @patch("os.path.getsize")
+    def test_can_add_middle_blob_and_ignore_small_size(self, mock_size, mock_open):
+        data = mixer.blend(
+            Data, filename="file.txt", filetype="txt", size=6, created=100,
+            is_directory=False, is_ready=False, md5=""
+        )
+        mock_size.return_value = 6
+        upload = SimpleUploadedFile(name="blob", content=b"def")
+        data = Data.create_from_partial_upload(upload, data=data, filesize=3)
+        self.assertEqual(data.filename, "file.txt")
+        self.assertEqual(data.filetype, "txt")
+        self.assertEqual(data.size, 6)
+        self.assertFalse(data.is_directory)
+        self.assertFalse(data.is_removed)
+        self.assertFalse(data.is_ready)
+        self.assertEqual(data.md5, "")
+        self.assertFalse(mock_open.called)
+    
+
+    @override_settings(NEXTFLOW_UPLOADS_ROOT="/uploads")
+    @patch("builtins.open")
+    @patch("os.path.getsize")
+    def test_can_add_middle_blob_and_fail_large_size(self, mock_size, mock_open):
+        data = mixer.blend(
+            Data, filename="file.txt", filetype="txt", size=0, created=100,
+            is_directory=False, is_ready=False, md5=""
+        )
+        mock_size.return_value = 6
+        upload = SimpleUploadedFile(name="blob", content=b"def")
+        with self.assertRaises(ValueError):
+            data = Data.create_from_partial_upload(upload, data=data, filesize=3)
     
 
     @override_settings(NEXTFLOW_UPLOADS_ROOT="/uploads")
@@ -243,7 +303,7 @@ class DataCreationFromUploadedFileTests(TestCase):
         data = Data.create_from_partial_upload(upload, filename="file.zip", is_directory=True)
         self.assertEqual(data.filename, "file")
         self.assertEqual(data.filetype, "")
-        self.assertEqual(data.size, 0)
+        self.assertEqual(data.size, 3)
         self.assertLess(abs(data.created - time.time()), 1)
         self.assertTrue(data.is_directory)
         self.assertFalse(data.is_removed)

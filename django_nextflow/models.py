@@ -474,9 +474,8 @@ class Data(RandomIDModel):
     
 
     @staticmethod
-    def create_from_partial_upload(blob, filename="blob", data=None, final=False, is_directory=False):
+    def create_from_partial_upload(blob, filename="blob", data=None, final=False, is_directory=False, filesize=None):
         """Updates a data object froma django UploadedFile."""
-
 
         if not data:
             filename_to_write_to, data_filename = filename, filename
@@ -484,18 +483,22 @@ class Data(RandomIDModel):
                 data_filename = data_filename[:-4]
             data = Data.objects.create(
                 filename=data_filename, filetype=get_file_extension(data_filename),
-                size=0, is_ready=False, is_directory=is_directory
+                size=blob.size, is_ready=False, is_directory=is_directory
             )
             location = os.path.join(settings.NEXTFLOW_UPLOADS_ROOT, str(data.id))
             os.mkdir(location)
             full_path = os.path.join(location, filename_to_write_to)
             with open(full_path, "wb") as f: f.write(blob.read())
         else:
+            if filesize is not None:
+                if filesize < data.size: return data
+                if filesize > data.size: raise ValueError("Missing chunk")
             filename_to_write_to, data_filename = data.filename, data.filename
             if data.is_directory: filename_to_write_to += ".zip"
             location = os.path.join(settings.NEXTFLOW_UPLOADS_ROOT, str(data.id))
             full_path = os.path.join(location, filename_to_write_to)
             with open(full_path, "ab") as f: f.write(blob.read())
+            data.size = os.path.getsize(full_path)
             data.created = time.time()
         if final:
             data.is_ready = True
