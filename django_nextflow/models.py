@@ -2,10 +2,12 @@ import os
 import re
 import time
 import shutil
+from django.dispatch import receiver
 import nextflow
 from random import randint
 from django.db import models
 from django.conf import settings
+from django.db.models.signals import post_delete
 from django_random_id_model import RandomIDModel, generate_random_id
 from .utils import get_file_extension, get_file_hash, parse_datetime, parse_duration
 from .graphs import Graph
@@ -585,9 +587,24 @@ class Data(RandomIDModel):
 
     def remove(self):
         """Removes the file on disk and sets is_removed to True."""
-        
+
         try:
             os.remove(self.full_path)
         except FileNotFoundError: pass
         self.is_removed = True
         self.save()
+
+
+@receiver(post_delete, sender=Data)
+def data_post_delete(sender, **kwargs):
+    """Delete the files on disk if data is deleted for real."""
+    
+    data = kwargs["instance"]
+    try:
+        if not data.upstream_process_execution:
+            shutil.rmtree(os.path.join(settings.NEXTFLOW_UPLOADS_ROOT, str(data.id)))
+        else:
+            shutil.rmtree(kwargs["instance"].full_path)
+            if data.is_directory:
+                shutil.rmtree(kwargs["instance"].full_path + ".zip")
+    except FileNotFoundError: pass

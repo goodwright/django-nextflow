@@ -527,3 +527,38 @@ class DataRemovalTests(TestCase):
         data.remove()
         self.assertTrue(data.is_removed)
         mock_remove.assert_called_with(mock_path.return_value)
+
+
+
+class DataDeletionTests(TestCase):
+
+    @override_settings(NEXTFLOW_DATA_ROOT="/data")
+    @override_settings(NEXTFLOW_UPLOADS_ROOT="/uploads")
+    @patch("shutil.rmtree")
+    def test_can_delete_upload(self, mock_rm):
+        data = mixer.blend(Data, id=1, upstream_process_execution=None)
+        data.delete()
+        mock_rm.assert_called_with(os.path.join("/uploads", "1"))
+    
+
+    @override_settings(NEXTFLOW_DATA_ROOT="/data")
+    @override_settings(NEXTFLOW_UPLOADS_ROOT="/uploads")
+    @patch("shutil.rmtree")
+    @patch("django_nextflow.models.Data.full_path", new_callable=PropertyMock)
+    def test_can_delete_produced_file(self, mock_path, mock_rm):
+        mock_path.return_value = "/data/proc/data.txt"
+        data = mixer.blend(Data, id=1)
+        data.delete()
+        mock_rm.assert_called_with(os.path.join("/data/proc/data.txt"))
+    
+
+    @override_settings(NEXTFLOW_DATA_ROOT="/data")
+    @override_settings(NEXTFLOW_UPLOADS_ROOT="/uploads")
+    @patch("shutil.rmtree")
+    @patch("django_nextflow.models.Data.full_path", new_callable=PropertyMock)
+    def test_can_delete_produced_directory(self, mock_path, mock_rm):
+        mock_path.return_value = "/data/proc/data"
+        data = mixer.blend(Data, id=1, is_directory=True)
+        data.delete()
+        mock_rm.assert_any_call(os.path.join("/data/proc/data"))
+        mock_rm.assert_any_call(os.path.join("/data/proc/data.zip"))
