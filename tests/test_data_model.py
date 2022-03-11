@@ -341,7 +341,7 @@ class DataCreationFromUploadedFileTests(TestCase):
         self.assertEqual(data.md5, "hash")
         mock_unpack.assert_called_with(
             os.path.join("/uploads", str(data.id), "file.zip"),
-            os.path.join("/uploads", str(data.id)), "zip"
+            os.path.join("/uploads", str(data.id), "file"), "zip"
         )
         mock_open.assert_called_with(os.path.join("/uploads", str(data.id), "file.zip"), "ab")
         mock_open.return_value.__enter__.return_value.write.assert_called_with(b"ghi")

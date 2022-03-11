@@ -469,7 +469,7 @@ class Data(RandomIDModel):
             for chunk in upload.chunks():
                 f.write(chunk)
         if data.is_directory:
-            shutil.unpack_archive(new_path, location, "zip")
+            shutil.unpack_archive(new_path, new_path[:-4], "zip")
         data.md5 = get_file_hash(new_path)
         data.save()
         return data
@@ -505,7 +505,7 @@ class Data(RandomIDModel):
         if final:
             data.is_ready = True
             if data.is_directory:
-                shutil.unpack_archive(full_path, location, "zip")
+                shutil.unpack_archive(full_path, full_path[:-4], "zip")
             data.md5 = get_file_hash(full_path)
             data.size = os.path.getsize(full_path)
         data.save()
@@ -598,7 +598,7 @@ class Data(RandomIDModel):
 @receiver(post_delete, sender=Data)
 def data_post_delete(sender, **kwargs):
     """Delete the files on disk if data is deleted for real."""
-    
+
     data = kwargs["instance"]
     try:
         if not data.upstream_process_execution:
