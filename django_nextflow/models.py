@@ -520,15 +520,15 @@ class Data(RandomIDModel):
         filename = path.split(os.path.sep)[-1]
         if process_execution.downstream_data.filter(filename=filename): return
         is_directory = os.path.isdir(path)
+        if is_directory: shutil.make_archive(path, "zip", path)
         data = Data.objects.create(
             filename=filename,
             is_directory=is_directory,
             filetype=get_file_extension(filename),
-            size=os.path.getsize(path),
+            size=os.path.getsize(path + ".zip" if is_directory else path),
             upstream_process_execution=process_execution
         )
         if is_directory:
-            shutil.make_archive(path, "zip", path)
             data.md5 = get_file_hash(path + ".zip")
         else:
             data.md5 = get_file_hash(path)

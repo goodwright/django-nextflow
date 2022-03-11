@@ -398,7 +398,7 @@ class DataCreationFromOutputTests(TestCase):
         self.assertLess(abs(data.created - time.time()), 1)
         self.assertIs(data.upstream_process_execution, process_execution)
         mock_ext.assert_called_with("file")
-        mock_size.assert_called_with("/path/to/file")
+        mock_size.assert_called_with("/path/to/file.zip")
         mock_dir.assert_called_with("/path/to/file")
         mock_zip.assert_called_with("/path/to/file", "zip", "/path/to/file")
         mock_md5.assert_called_with(os.path.join("/path/to/file.zip"))
