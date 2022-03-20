@@ -12,7 +12,10 @@ class Graph:
                 data[d.id] = d
                 pe.down.add(d)
             for d in pe.upstream_data.all():
-                data[d.id] = d
+                if d.id in data:
+                    d = data[d.id]
+                else:
+                    data[d.id] = d
                 pe.up.add(d)
         for d in data.values():
             d.down = set()
