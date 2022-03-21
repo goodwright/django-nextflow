@@ -143,6 +143,13 @@ execution.
 
 ## Changelog
 
+### 0.9.2
+
+*21st March, 2022*
+
+- Added data post-delete behavior.
+- Fixed up/downstream within execution lookups.
+
 ### 0.9.1
 
 *7th March, 2022*
