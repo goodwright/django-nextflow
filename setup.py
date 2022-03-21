@@ -9,7 +9,7 @@ setup(
     description="A django library for running Nextflow pipelines and storing their result.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/samirelanduk/django-nextflow",
+    url="https://github.com/goodwright/django-nextflow",
     author="Sam Ireland",
     author_email="sam@goodwright.com",
     license="GPLv3+",
