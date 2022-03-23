@@ -143,6 +143,12 @@ execution.
 
 ## Changelog
 
+### 0.9.3
+
+*23rd March, 2022*
+
+- Fixed data post-delete hook handling of missing upstream objects.
+
 ### 0.9.2
 
 *21st March, 2022*
