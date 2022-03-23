@@ -608,3 +608,4 @@ def data_post_delete(sender, **kwargs):
             if data.is_directory:
                 shutil.rmtree(kwargs["instance"].full_path + ".zip")
     except FileNotFoundError: pass
+    except ProcessExecution.DoesNotExist: pass
