@@ -15,8 +15,12 @@ from .graphs import Graph
 class PipelineCategory(RandomIDModel):
     """A category that pipelines can belong to."""
 
+    class Meta:
+        ordering = ["order"]
+
     name = models.CharField(max_length=200)
     description = models.TextField()
+    order = models.IntegerField(default=1)
 
     def __str__(self):
         return self.name
@@ -27,13 +31,14 @@ class Pipeline(RandomIDModel):
     """A Nextflow pipeline, representing some .nf file."""
 
     class Meta:
-        ordering = ["name"]
+        ordering = ["order"]
 
     name = models.CharField(max_length=200)
     description = models.TextField()
     path = models.CharField(max_length=300)
     schema_path = models.CharField(max_length=300)
     config_path = models.CharField(max_length=300)
+    order = models.IntegerField(default=1)
     category = models.ForeignKey(PipelineCategory, null=True, on_delete=models.SET_NULL, related_name="pipelines")
 
     def __str__(self):
