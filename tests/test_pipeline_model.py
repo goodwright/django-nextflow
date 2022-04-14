@@ -17,6 +17,7 @@ class PipelineCreationTests(TestCase):
         )
         self.assertEqual(str(pipeline), "Run analysis")
         self.assertEqual(list(pipeline.executions.all()), [])
+        self.assertIsNone(pipeline.category)
     
 
     def test_pipeline_order(self):

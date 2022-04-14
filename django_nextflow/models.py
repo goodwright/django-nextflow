@@ -12,6 +12,17 @@ from django_random_id_model import RandomIDModel, generate_random_id
 from .utils import get_file_extension, get_file_hash, parse_datetime, parse_duration
 from .graphs import Graph
 
+class PipelineCategory(RandomIDModel):
+    """A category that pipelines can belong to."""
+
+    name = models.CharField(max_length=200)
+    description = models.TextField()
+
+    def __str__(self):
+        return self.name
+
+
+
 class Pipeline(RandomIDModel):
     """A Nextflow pipeline, representing some .nf file."""
 
@@ -23,6 +34,7 @@ class Pipeline(RandomIDModel):
     path = models.CharField(max_length=300)
     schema_path = models.CharField(max_length=300)
     config_path = models.CharField(max_length=300)
+    category = models.ForeignKey(PipelineCategory, null=True, on_delete=models.SET_NULL, related_name="pipelines")
 
     def __str__(self):
         return self.name
