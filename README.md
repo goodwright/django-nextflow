@@ -64,6 +64,8 @@ pipeline = Pipeline.objects.create(
 print(pipeline.input_schema) # Returns inputs as dict
 ```
 
+These can be assigned to `PipelineCategory` objects for organisation.
+
 To run the pipeline:
 
 ```python
@@ -142,6 +144,13 @@ execution using the `downstream_within_execution` method. Likewise the
 execution.
 
 ## Changelog
+
+### 0.10
+
+*19th April, 2022*
+
+- Pipelines can now be organised into categories with a new `PipelineCatgeory` model.
+- Pipelines now have an `order` field for ordering within categories.
 
 ### 0.9.3
 
