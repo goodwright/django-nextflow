@@ -9,7 +9,8 @@ from django.db import models
 from django.conf import settings
 from django.db.models.signals import post_delete
 from django_random_id_model import RandomIDModel, generate_random_id
-from .utils import get_file_extension, get_file_hash, parse_datetime, parse_duration
+from numpy import full
+from .utils import check_if_binary, get_file_extension, get_file_hash, parse_datetime, parse_duration
 from .graphs import Graph
 
 class PipelineCategory(RandomIDModel):
@@ -436,6 +437,7 @@ class Data(RandomIDModel):
     notes = models.TextField(default="", blank=True)
     is_ready = models.BooleanField(default=True)
     is_removed = models.BooleanField(default=False)
+    is_binary = models.BooleanField(default=True)
     md5 = models.CharField(max_length=64, default="")
     upstream_process_execution = models.ForeignKey(ProcessExecution, null=True, related_name="downstream_data", on_delete=models.CASCADE)
     downstream_executions = models.ManyToManyField(Execution, related_name="upstream_data")
@@ -450,9 +452,11 @@ class Data(RandomIDModel):
         """Creates a data object representing an uploaded file from a path."""
 
         filename = path.split(os.path.sep)[-1]
+        is_directory = os.path.isdir(path)
         data = Data.objects.create(
             filename=filename, filetype=get_file_extension(filename),
-            size=os.path.getsize(path), is_directory=os.path.isdir(path)
+            size=os.path.getsize(path), is_directory=is_directory,
+            is_binary=not is_directory and check_if_binary(path)
         )
         os.mkdir(os.path.join(settings.NEXTFLOW_UPLOADS_ROOT, str(data.id)))
         new_path = os.path.join(
@@ -487,6 +491,7 @@ class Data(RandomIDModel):
                 f.write(chunk)
         if data.is_directory:
             shutil.unpack_archive(new_path, new_path[:-4], "zip")
+        data.is_binary = not data.is_directory and check_if_binary(new_path)
         data.md5 = get_file_hash(new_path)
         data.save()
         return data
@@ -494,7 +499,7 @@ class Data(RandomIDModel):
 
     @staticmethod
     def create_from_partial_upload(blob, filename="blob", data=None, final=False, is_directory=False, filesize=None):
-        """Updates a data object froma django UploadedFile."""
+        """Updates a data object from a django UploadedFile."""
 
         if not data:
             filename_to_write_to, data_filename = filename, filename
@@ -523,6 +528,7 @@ class Data(RandomIDModel):
             data.is_ready = True
             if data.is_directory:
                 shutil.unpack_archive(full_path, full_path[:-4], "zip")
+            data.is_binary = not data.is_directory and check_if_binary(full_path)
             data.md5 = get_file_hash(full_path)
             data.size = os.path.getsize(full_path)
         data.save()
@@ -543,7 +549,8 @@ class Data(RandomIDModel):
             is_directory=is_directory,
             filetype=get_file_extension(filename),
             size=os.path.getsize(path + ".zip" if is_directory else path),
-            upstream_process_execution=process_execution
+            upstream_process_execution=process_execution,
+            is_binary=not is_directory and check_if_binary(path)
         )
         if is_directory:
             data.md5 = get_file_hash(path + ".zip")

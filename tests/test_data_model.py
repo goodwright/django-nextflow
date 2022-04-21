@@ -20,6 +20,7 @@ class DataCreationTests(TestCase):
         self.assertEqual(data.label, "")
         self.assertEqual(data.notes, "")
         self.assertTrue(data.is_ready)
+        self.assertTrue(data.is_binary)
         self.assertFalse(data.is_removed)
         self.assertLess(abs(data.created - time.time()), 1)
         self.assertEqual(data.downstream_executions.count(), 0)
@@ -43,17 +44,20 @@ class DataCreationFromPathTests(TestCase):
     @patch("os.mkdir")
     @patch("shutil.copy")
     @patch("django_nextflow.models.get_file_hash")
-    def test_can_create_from_path(self, mock_md5, mock_copy, mock_mk, mock_dir, mock_size, mock_ext):
+    @patch("django_nextflow.models.check_if_binary")
+    def test_can_create_from_path(self, mock_bin, mock_md5, mock_copy, mock_mk, mock_dir, mock_size, mock_ext):
         mock_ext.return_value = "txt"
         mock_size.return_value = 100
         mock_dir.return_value = False
         mock_md5.return_value = "X"
+        mock_bin.return_value = False
         data = Data.create_from_path("/path/to/file")
         self.assertEqual(data.filename, "file")
         self.assertEqual(data.filetype, "txt")
         self.assertEqual(data.md5, "X")
         self.assertEqual(data.size, 100)
         self.assertFalse(data.is_directory)
+        self.assertFalse(data.is_binary)
         self.assertLess(abs(data.created - time.time()), 1)
         self.assertIsNone(data.upstream_process_execution)
         mock_dir.assert_called_with("/path/to/file")
@@ -62,6 +66,7 @@ class DataCreationFromPathTests(TestCase):
             "/uploads", str(data.id), "file"
         ))
         mock_md5.assert_called_with(os.path.join(os.path.join("/uploads", str(data.id), "file")))
+        mock_bin.assert_called_with("/path/to/file")
     
 
     @override_settings(NEXTFLOW_UPLOADS_ROOT="/uploads")
@@ -72,7 +77,8 @@ class DataCreationFromPathTests(TestCase):
     @patch("shutil.copy")
     @patch("shutil.make_archive")
     @patch("django_nextflow.models.get_file_hash")
-    def test_can_create_directory_from_path(self, mock_md5, mock_zip, mock_copy, mock_mk, mock_dir, mock_size, mock_ext):
+    @patch("django_nextflow.models.check_if_binary")
+    def test_can_create_directory_from_path(self, mock_bin, mock_md5, mock_zip, mock_copy, mock_mk, mock_dir, mock_size, mock_ext):
         mock_ext.return_value = "txt"
         mock_size.return_value = 100
         mock_dir.return_value = True
@@ -83,6 +89,7 @@ class DataCreationFromPathTests(TestCase):
         self.assertEqual(data.md5, "X")
         self.assertEqual(data.size, 100)
         self.assertTrue(data.is_directory)
+        self.assertFalse(data.is_binary)
         self.assertLess(abs(data.created - time.time()), 1)
         self.assertIsNone(data.upstream_process_execution)
         mock_dir.assert_called_with("/path/to/file")
@@ -95,6 +102,7 @@ class DataCreationFromPathTests(TestCase):
             "zip", os.path.join("/uploads", str(data.id), "file"),
         )
         mock_md5.assert_called_with(os.path.join(os.path.join("/uploads", str(data.id), "file.zip")))
+        self.assertFalse(mock_bin.called)
 
 
 
@@ -105,10 +113,12 @@ class DataCreationFromUploadedFileTests(TestCase):
     @patch("os.mkdir")
     @patch("builtins.open")
     @patch("django_nextflow.models.get_file_hash")
-    def test_can_create_from_upload(self, mock_md5, mock_open, mock_mk, mock_ext):
+    @patch("django_nextflow.models.check_if_binary")
+    def test_can_create_from_upload(self, mock_bin, mock_md5, mock_open, mock_mk, mock_ext):
         upload = SimpleUploadedFile(name="file.txt", content=b"abc")
         mock_ext.return_value = "txt"
         mock_md5.return_value = "X"
+        mock_bin.return_value = False
         data = Data.create_from_upload(upload)
         self.assertEqual(data.filename, "file.txt")
         self.assertEqual(data.filetype, "txt")
@@ -124,6 +134,7 @@ class DataCreationFromUploadedFileTests(TestCase):
         ), "wb+")
         mock_open.return_value.__enter__.return_value.write.assert_called_with(b"abc")
         mock_md5.assert_called_with(os.path.join("/uploads", str(data.id), "file.txt"))
+        mock_bin.assert_called_with(os.path.join("/uploads", str(data.id), "file.txt"))
 
     
 
@@ -133,7 +144,8 @@ class DataCreationFromUploadedFileTests(TestCase):
     @patch("builtins.open")
     @patch("shutil.unpack_archive")
     @patch("django_nextflow.models.get_file_hash")
-    def test_can_create_directory_from_upload(self, mock_md5, mock_unzip, mock_open, mock_mk, mock_ext):
+    @patch("django_nextflow.models.check_if_binary")
+    def test_can_create_directory_from_upload(self, mock_bin, mock_md5, mock_unzip, mock_open, mock_mk, mock_ext):
         upload = SimpleUploadedFile(name="file.zip", content=b"abc")
         mock_ext.return_value = ""
         mock_md5.return_value = "X"
@@ -143,6 +155,7 @@ class DataCreationFromUploadedFileTests(TestCase):
         self.assertEqual(data.md5, "X")
         self.assertEqual(data.size, 3)
         self.assertTrue(data.is_directory)
+        self.assertFalse(data.is_binary)
         self.assertLess(abs(data.created - time.time()), 1)
         self.assertIsNone(data.upstream_process_execution)
         mock_ext.assert_called_with("file")
@@ -153,27 +166,31 @@ class DataCreationFromUploadedFileTests(TestCase):
         mock_open.return_value.__enter__.return_value.write.assert_called_with(b"abc")
         mock_unzip.assert_called_with(
             os.path.join("/uploads", str(data.id), "file.zip"),
-            os.path.join("/uploads", str(data.id)), "zip"
+            os.path.join("/uploads", str(data.id), "file"), "zip"
         )
         mock_md5.assert_called_with(os.path.join("/uploads", str(data.id), "file.zip"))
+        self.assertFalse(mock_bin.called)
 
 
 
-class DataCreationFromUploadedFileTests(TestCase):
+class DataCreationFromMultiUploadedFileTests(TestCase):
 
     @override_settings(NEXTFLOW_UPLOADS_ROOT="/uploads")
     @patch("django_nextflow.models.get_file_extension")
     @patch("os.mkdir")
     @patch("builtins.open")
-    def test_can_create_first_blob(self, mock_open, mock_mk, mock_ext):
+    @patch("django_nextflow.models.check_if_binary")
+    def test_can_create_first_blob(self, mock_bin, mock_open, mock_mk, mock_ext):
         upload = SimpleUploadedFile(name="blob", content=b"abc")
         mock_ext.return_value = "txt"
+        mock_bin.return_value = False
         data = Data.create_from_partial_upload(upload, filename="file.txt")
         self.assertEqual(data.filename, "file.txt")
         self.assertEqual(data.filetype, "txt")
         self.assertEqual(data.size, 3)
         self.assertLess(abs(data.created - time.time()), 1)
         self.assertFalse(data.is_directory)
+        self.assertTrue(data.is_binary)
         self.assertFalse(data.is_removed)
         self.assertFalse(data.is_ready)
         self.assertEqual(data.md5, "")
@@ -183,6 +200,7 @@ class DataCreationFromUploadedFileTests(TestCase):
             "/uploads", str(data.id), "file.txt"
         ), "wb")
         mock_open.return_value.__enter__.return_value.write.assert_called_with(b"abc")
+        self.assertFalse(mock_bin.called)
     
 
     @override_settings(NEXTFLOW_UPLOADS_ROOT="/uploads")
@@ -270,11 +288,13 @@ class DataCreationFromUploadedFileTests(TestCase):
     @patch("builtins.open")
     @patch("os.path.getsize")
     @patch("django_nextflow.models.get_file_hash")
-    def test_can_add_final_blob(self, mock_md5, mock_size, mock_open):
+    @patch("django_nextflow.models.check_if_binary")
+    def test_can_add_final_blob(self, mock_bin, mock_md5, mock_size, mock_open):
         data = mixer.blend(
             Data, filename="file.txt", filetype="txt", size=0, created=100,
             is_directory=False, is_ready=False, md5=""
         )
+        mock_bin.return_value = False
         mock_size.return_value = 9
         mock_md5.return_value = "hash"
         upload = SimpleUploadedFile(name="blob", content=b"ghi")
@@ -284,6 +304,7 @@ class DataCreationFromUploadedFileTests(TestCase):
         self.assertEqual(data.size, 9)
         self.assertLess(abs(data.created - time.time()), 1)
         self.assertFalse(data.is_directory)
+        self.assertFalse(data.is_directory)
         self.assertFalse(data.is_removed)
         self.assertTrue(data.is_ready)
         self.assertEqual(data.md5, "hash")
@@ -291,6 +312,7 @@ class DataCreationFromUploadedFileTests(TestCase):
         mock_open.return_value.__enter__.return_value.write.assert_called_with(b"ghi")
         mock_md5.assert_called_with(os.path.join("/uploads", str(data.id), "file.txt"))
         mock_size.assert_called_with(os.path.join("/uploads", str(data.id), "file.txt"))
+        mock_bin.assert_called_with(os.path.join("/uploads", str(data.id), "file.txt"))
     
 
     @override_settings(NEXTFLOW_UPLOADS_ROOT="/uploads")
@@ -306,6 +328,7 @@ class DataCreationFromUploadedFileTests(TestCase):
         self.assertEqual(data.size, 3)
         self.assertLess(abs(data.created - time.time()), 1)
         self.assertTrue(data.is_directory)
+        self.assertTrue(data.is_binary)
         self.assertFalse(data.is_removed)
         self.assertFalse(data.is_ready)
         self.assertEqual(data.md5, "")
@@ -336,6 +359,7 @@ class DataCreationFromUploadedFileTests(TestCase):
         self.assertEqual(data.size, 9)
         self.assertLess(abs(data.created - time.time()), 1)
         self.assertTrue(data.is_directory)
+        self.assertFalse(data.is_binary)
         self.assertFalse(data.is_removed)
         self.assertTrue(data.is_ready)
         self.assertEqual(data.md5, "hash")
@@ -357,24 +381,28 @@ class DataCreationFromOutputTests(TestCase):
     @patch("django_nextflow.models.get_file_extension")
     @patch("os.path.getsize")
     @patch("django_nextflow.models.get_file_hash")
-    def test_can_create_from_output(self, mock_md5, mock_size, mock_ext, mock_dir):
+    @patch("django_nextflow.models.check_if_binary")
+    def test_can_create_from_output(self, mock_bin, mock_md5, mock_size, mock_ext, mock_dir):
         process_execution = mixer.blend(ProcessExecution)
         mock_ext.return_value = "txt"
         mock_size.return_value = 200
         mock_md5.return_value = "X"
         mock_dir.return_value = False
+        mock_bin.return_value = False
         data = Data.create_from_output("/path/to/file.txt", process_execution)
         self.assertEqual(data.filename, "file.txt")
         self.assertEqual(data.filetype, "txt")
         self.assertEqual(data.size, 200)
         self.assertEqual(data.md5, "X")
         self.assertFalse(data.is_directory)
+        self.assertFalse(data.is_binary)
         self.assertLess(abs(data.created - time.time()), 1)
         self.assertIs(data.upstream_process_execution, process_execution)
         mock_ext.assert_called_with("file.txt")
         mock_size.assert_called_with("/path/to/file.txt")
         mock_dir.assert_called_with("/path/to/file.txt")
         mock_md5.assert_called_with(os.path.join("/path/to/file.txt"))
+        mock_bin.assert_called_with(os.path.join("/path/to/file.txt"))
     
 
     @override_settings(NEXTFLOW_UPLOADS_ROOT="/uploads")
@@ -383,7 +411,8 @@ class DataCreationFromOutputTests(TestCase):
     @patch("os.path.getsize")
     @patch("shutil.make_archive")
     @patch("django_nextflow.models.get_file_hash")
-    def test_can_create_directory_from_output(self, mock_md5, mock_zip, mock_size, mock_ext, mock_dir):
+    @patch("django_nextflow.models.check_if_binary")
+    def test_can_create_directory_from_output(self, mock_bin, mock_md5, mock_zip, mock_size, mock_ext, mock_dir):
         process_execution = mixer.blend(ProcessExecution)
         mock_ext.return_value = ""
         mock_size.return_value = 200
@@ -394,6 +423,7 @@ class DataCreationFromOutputTests(TestCase):
         self.assertEqual(data.filetype, "")
         self.assertEqual(data.size, 200)
         self.assertEqual(data.md5, "X")
+        self.assertFalse(data.is_binary)
         self.assertTrue(data.is_directory)
         self.assertLess(abs(data.created - time.time()), 1)
         self.assertIs(data.upstream_process_execution, process_execution)
@@ -402,6 +432,7 @@ class DataCreationFromOutputTests(TestCase):
         mock_dir.assert_called_with("/path/to/file")
         mock_zip.assert_called_with("/path/to/file", "zip", "/path/to/file")
         mock_md5.assert_called_with(os.path.join("/path/to/file.zip"))
+        self.assertFalse(mock_bin.called)
     
 
     def test_can_ignore_if_already_exists(self):
