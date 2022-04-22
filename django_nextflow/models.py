@@ -609,6 +609,17 @@ class Data(RandomIDModel):
         return Data.objects.filter(id__in=data_ids)
     
 
+    def contents(self, position=0, size=1024):
+        """For plain text files, gets a portion of the text within."""
+
+        if self.is_directory or self.is_binary or not self.is_ready:
+            return None
+        position *= size
+        with open(self.full_path) as f:
+            f.seek(position)
+            return f.read(size)
+    
+
     def remove(self):
         """Removes the file on disk and sets is_removed to True."""
 

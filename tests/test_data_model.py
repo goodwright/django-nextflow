@@ -535,6 +535,50 @@ class DownstreamWithinExecutionTests(TestCase):
 
 
 
+class DataContentsTests(TestCase):
+
+    def test_binary_contents(self):
+        data = mixer.blend(Data, is_binary=True, is_directory=False, is_ready=True)
+        self.assertIsNone(data.contents())
+    
+
+    def test_directory_contents(self):
+        data = mixer.blend(Data, is_binary=False, is_directory=True, is_ready=True)
+        self.assertIsNone(data.contents())
+    
+
+    def test_unready_contents(self):
+        data = mixer.blend(Data, is_binary=False, is_directory=False, is_ready=False)
+        self.assertIsNone(data.contents())
+    
+
+    @patch("django_nextflow.models.Data.full_path", new_callable=PropertyMock)
+    @patch("builtins.open")
+    def test_can_get_contents(self, mock_open, mock_path):
+        mock_path.return_value = "/path"
+        data = mixer.blend(Data, is_binary=False)
+        data.full_path = "/path"
+        mock_open.return_value.__enter__.return_value.read.return_value = "X"
+        self.assertEqual(data.contents(), "X")
+        mock_open.assert_called_with("/path")
+        mock_open.return_value.__enter__.return_value.seek.assert_called_with(0)
+        mock_open.return_value.__enter__.return_value.read.assert_called_with(1024)
+    
+
+    @patch("django_nextflow.models.Data.full_path", new_callable=PropertyMock)
+    @patch("builtins.open")
+    def test_can_get_specific_contents(self, mock_open, mock_path):
+        mock_path.return_value = "/path"
+        data = mixer.blend(Data, is_binary=False)
+        data.full_path = "/path"
+        mock_open.return_value.__enter__.return_value.read.return_value = "X"
+        self.assertEqual(data.contents(4, 500), "X")
+        mock_open.assert_called_with("/path")
+        mock_open.return_value.__enter__.return_value.seek.assert_called_with(2000)
+        mock_open.return_value.__enter__.return_value.read.assert_called_with(500)
+
+
+
 class DataRemovalTests(TestCase):
 
     @override_settings(NEXTFLOW_DATA_ROOT="/data")
