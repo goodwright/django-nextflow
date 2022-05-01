@@ -1,17 +1,16 @@
 import os
 import re
 import time
+import json
 import shutil
-from django.dispatch import receiver
 import nextflow
-from random import randint
 from django.db import models
 from django.conf import settings
+from django.dispatch import receiver
 from django.db.models.signals import post_delete
 from django_random_id_model import RandomIDModel, generate_random_id
-from numpy import full
-from .utils import check_if_binary, get_file_extension, get_file_hash, parse_datetime, parse_duration
 from .graphs import Graph
+from .utils import check_if_binary, get_file_extension, get_file_hash, parse_datetime, parse_duration
 
 class PipelineCategory(RandomIDModel):
     """A category that pipelines can belong to."""
@@ -137,14 +136,16 @@ class Pipeline(RandomIDModel):
         
         pipeline = self.create_pipeline()
         id = Execution.prepare_directory(execution_id=execution_id)
-        params, data_objects, execution_objects = self.create_params(
+        full_params, data_objects, execution_objects = self.create_params(
             params or {}, data_params or {}, execution_params or {}, str(id)
         )
         execution = pipeline.run(
             location=os.path.join(settings.NEXTFLOW_DATA_ROOT, str(id)),
-            params=params, profile=profile
+            params=full_params, profile=profile
         )
-        execution_model = Execution.create_from_object(execution, id, self)
+        execution_model = Execution.create_from_object(
+            execution, id, self, params, data_params, execution_params
+        )
         execution_model.remove_symlinks()
         for data in data_objects: execution_model.upstream_data.add(data)
         for ex in execution_objects: execution_model.upstream_executions.add(ex)
@@ -162,14 +163,16 @@ class Pipeline(RandomIDModel):
     def run_and_update(self, params=None, data_params=None, execution_params=None, profile=None, execution_id=None, post_poll=None):
         pipeline = self.create_pipeline()
         id = Execution.prepare_directory(execution_id=execution_id)
-        params, data_objects, execution_objects = self.create_params(
+        full_params, data_objects, execution_objects = self.create_params(
             params or {}, data_params or {}, execution_params or {}, str(id)
         )
         for execution in pipeline.run_and_poll(
             location=os.path.join(settings.NEXTFLOW_DATA_ROOT, str(id)),
-            params=params, profile=profile
+            params=full_params, profile=profile
         ):
-            execution_model = Execution.create_from_object(execution, id, self)
+            execution_model = Execution.create_from_object(
+                execution, id, self, params, data_params, execution_params
+            )
             for data in data_objects:
                 if not execution_model.upstream_data.filter(id=data.id):
                     execution_model.upstream_data.add(data)
@@ -190,6 +193,8 @@ class Pipeline(RandomIDModel):
             return execution_model
         except: pass
 
+
+
 class Execution(RandomIDModel):
     """A record of the running of some Nextflow file."""
 
@@ -197,6 +202,9 @@ class Execution(RandomIDModel):
         ordering = ["started"]
 
     identifier = models.CharField(max_length=100)
+    params = models.TextField(default="{}")
+    data_params = models.TextField(default="{}")
+    execution_params = models.TextField(default="{}")
     stdout = models.TextField()
     stderr = models.TextField()
     exit_code = models.IntegerField(null=True)
@@ -245,11 +253,14 @@ class Execution(RandomIDModel):
     
 
     @staticmethod
-    def create_from_object(execution, id, pipeline):
+    def create_from_object(execution, id, pipeline, params=None, data_params=None, execution_params=None):
         """Creates a Execution model object from a nextflow.py Execution."""
 
         execution_model = Execution.objects.get_or_create(id=id, pipeline=pipeline)[0]
         execution_model.identifier = execution.id
+        if params: execution_model.params = json.dumps(params)
+        if data_params: execution_model.data_params = json.dumps(data_params)
+        if execution_params: execution_model.execution_params = json.dumps(execution_params)
         execution_model.stdout = execution.stdout
         execution_model.stderr = execution.stderr
         execution_model.status = execution.status

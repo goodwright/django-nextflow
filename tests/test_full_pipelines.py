@@ -1,5 +1,6 @@
 import os
 import time
+import json
 import shutil
 from django.test import TestCase
 from django.test.utils import override_settings
@@ -70,6 +71,9 @@ class PdbToMmcifTests(PipelineTest):
             " --pdb=" +\
             os.path.abspath(os.path.join(self.upload_dir, str(pdb_data.id), "1lol.pdb\n"))
         self.assertEqual(execution.command, command)
+        self.assertEqual(execution.params, "{}")
+        self.assertEqual(execution.data_params, json.dumps({"pdb": pdb_data.id}))
+        self.assertEqual(execution.execution_params, "{}")
         self.assertIn("[main] DEBUG", execution.get_log_text())
         self.assertEqual(list(execution.upstream_data.all()), [pdb_data])
         self.assertLess(abs(execution.started - start), 10)

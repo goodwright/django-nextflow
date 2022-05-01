@@ -151,7 +151,7 @@ execution.
 
 - Data is now marked as binary or non-binary.
 - Data now has `contents()` method for returning their plain text contents.
-- 
+
 ### 0.10
 
 *19th April, 2022*

@@ -17,6 +17,9 @@ class ExecutionCreationTests(TestCase):
         self.assertEqual(str(execution), "good_run")
         self.assertEqual(execution.label, "")
         self.assertEqual(execution.notes, "")
+        self.assertEqual(execution.params, "{}")
+        self.assertEqual(execution.data_params, "{}")
+        self.assertEqual(execution.execution_params, "{}")
         self.assertEqual(list(execution.process_executions.all()), [])
         self.assertEqual(list(execution.upstream_data.all()), [])
     
@@ -83,8 +86,13 @@ class CreationFromObjectTests(TestCase):
             stdout="out", stderr="err", returncode=0, duration="1s"
         )
         pipeline = mixer.blend(Pipeline)
-        execution = Execution.create_from_object(execution, 1234, pipeline)
+        execution = Execution.create_from_object(
+            execution, 1234, pipeline, {1: 2}, {3: 4}, {5: 6}
+        )
         self.assertEqual(execution.id, 1234)
+        self.assertEqual(execution.params, '{"1": 2}')
+        self.assertEqual(execution.data_params, '{"3": 4}')
+        self.assertEqual(execution.execution_params, '{"5": 6}')
         self.assertEqual(execution.identifier, "x_y")
         self.assertEqual(execution.stdout, "out")
         self.assertEqual(execution.stderr, "err")
