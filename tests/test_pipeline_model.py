@@ -1,4 +1,5 @@
 import os
+import json
 from unittest.mock import MagicMock, Mock, PropertyMock, patch
 from django.test import TestCase
 from django.test.utils import override_settings
@@ -145,11 +146,11 @@ class ExecutionParamCreationTests(TestCase):
         procex2 = mixer.blend(ProcessExecution, process_name="PROC2", execution=ex1)
         mixer.blend(Data, filename="file3.txt", upstream_process_execution=procex2)
         mixer.blend(Data, filename="file4.txt", upstream_process_execution=procex2)
-        ex2 = mixer.blend(Execution, id=2)
+        ex2 = mixer.blend(Execution, id=2, data_params=json.dumps({"paramname": 7}))
         procex3 = mixer.blend(ProcessExecution, process_name="PROC3", execution=ex2)
         mixer.blend(Data, filename="file5.txt", upstream_process_execution=procex3)
         mixer.blend(Data, filename="file6.txt", upstream_process_execution=procex3)
-        d7 = mixer.blend(Data, filename="file7.txt")
+        d7 = mixer.blend(Data, filename="file7.txt", id=7)
         d7.downstream_executions.add(ex2)
         mock_path.return_value = "path"
         params = {}
@@ -163,13 +164,15 @@ class ExecutionParamCreationTests(TestCase):
         mock_mk.assert_any_call(os.path.join("/data", "10", "executions", "A", "PROC1"))
         mock_mk.assert_any_call(os.path.join("/data", "10", "executions", "A", "PROC2"))
         mock_mk.assert_any_call(os.path.join("/data", "10", "executions", "B", "PROC3"))
+        mock_mk.assert_any_call(os.path.join("/data", "10", "executions", "A", "inputs"))
+        mock_mk.assert_any_call(os.path.join("/data", "10", "executions", "B", "inputs"))
         mock_sym.assert_any_call("path", os.path.join("/data", "10", "executions", "A", "PROC1", "file1.txt"))
         mock_sym.assert_any_call("path", os.path.join("/data", "10", "executions", "A", "PROC1", "file2.txt"))
         mock_sym.assert_any_call("path", os.path.join("/data", "10", "executions", "A", "PROC2", "file3.txt"))
         mock_sym.assert_any_call("path", os.path.join("/data", "10", "executions", "A", "PROC2", "file4.txt"))
         mock_sym.assert_any_call("path", os.path.join("/data", "10", "executions", "B", "PROC3", "file5.txt"))
         mock_sym.assert_any_call("path", os.path.join("/data", "10", "executions", "B", "PROC3", "file6.txt"))
-        mock_sym.assert_any_call("path", os.path.join("/data", "10", "executions", "B", "file7.txt"))
+        mock_sym.assert_any_call("path", os.path.join("/data", "10", "executions", "B", "inputs", "paramname", "file7.txt"))
         self.assertEqual(executions, [ex1, ex2])
 
 

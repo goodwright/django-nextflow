@@ -121,10 +121,14 @@ class Pipeline(RandomIDModel):
                     os.symlink(data.full_path, os.path.join(
                         ex_dir_name, process.process_name, data.filename
                     ))
+            data_params = json.loads(execution.data_params)
+            os.mkdir(os.path.join(ex_dir_name, "inputs"))
             for data in execution.upstream_data.all():
-                os.symlink(data.full_path, os.path.join(
-                    ex_dir_name, data.filename
-                ))   
+                param_names = [k for k, v in data_params.items() if v == data.id]
+                if param_names:
+                    os.symlink(data.full_path, os.path.join(
+                        ex_dir_name, "inputs", param_names[0], data.filename
+                    ))   
             params[name] = ex_dir_name
             execution_objects.append(execution)
         return execution_objects
