@@ -145,6 +145,13 @@ execution.
 
 ## Changelog
 
+### 0.12
+
+*2nd May, 2022*
+
+- Executions now save their input params.
+- Execution inputs to executions now organise their inputs by param.
+  
 ### 0.11
 
 *22nd April, 2022*
