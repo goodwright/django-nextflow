@@ -10,7 +10,7 @@ from django.dispatch import receiver
 from django.db.models.signals import post_delete
 from django_random_id_model import RandomIDModel, generate_random_id
 from .graphs import Graph
-from .utils import check_if_binary, get_file_extension, get_file_hash, parse_datetime, parse_duration
+from .utils import check_if_binary, get_file_extension, get_file_hash
 
 class PipelineCategory(RandomIDModel):
     """A category that pipelines can belong to."""
