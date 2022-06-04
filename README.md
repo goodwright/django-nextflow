@@ -145,6 +145,12 @@ execution.
 
 ## Changelog
 
+### 0.12.1
+
+*4th June, 2022*
+
+- Added compatability with nextflow.py v0.3
+
 ### 0.12
 
 *2nd May, 2022*
