@@ -271,8 +271,8 @@ class Execution(RandomIDModel):
         execution_model.status = execution.status
         execution_model.exit_code = execution.returncode
         execution_model.command = execution.command
-        execution_model.started = parse_datetime(execution.datetime)
-        execution_model.duration = parse_duration(execution.duration)
+        execution_model.started = execution.started
+        execution_model.duration = execution.duration
         execution_model.save()
         return execution_model
     
@@ -330,8 +330,8 @@ class ProcessExecution(RandomIDModel):
         proc_ex.status = process_execution.status
         proc_ex.stdout = process_execution.stdout
         proc_ex.stderr = process_execution.stderr
-        proc_ex.started = parse_datetime(process_execution.start)
-        proc_ex.duration = parse_duration(process_execution.duration)
+        proc_ex.started = process_execution.started
+        proc_ex.duration = process_execution.duration
         proc_ex.save()
         return proc_ex
     

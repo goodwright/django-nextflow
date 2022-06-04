@@ -30,15 +30,11 @@ class ProcessExecutionCreationTests(TestCase):
 
 class ProcessExecutionCreationFromObject(TestCase):
 
-    @patch("django_nextflow.models.parse_datetime")
-    @patch("django_nextflow.models.parse_duration")
-    def test_can_create_from_object(self, mock_dur, mock_date):
+    def test_can_create_from_object(self):
         mock_pe = Mock(
-            name="PROC (1)", process="PROC", hash="ab/123",
-            status="OK", stdout="out", stderr="err", start="123", duration="456"
+            name="PROC (1)", process="PROC", hash="ab/123", started=2000,
+            status="OK", stdout="out", stderr="err", start="123", duration=10
         )
-        mock_dur.return_value = 10
-        mock_date.return_value = 2000
         ex = mixer.blend(Execution)
         mock_pe.name = "PROC (1)"
         execution = ProcessExecution.create_from_object(mock_pe, ex)
@@ -51,19 +47,13 @@ class ProcessExecutionCreationFromObject(TestCase):
         self.assertEqual(execution.started, 2000)
         self.assertEqual(execution.duration, 10)
         self.assertEqual(execution.execution, ex)
-        mock_dur.assert_called_with("456")
-        mock_date.assert_called_with("123")
     
 
-    @patch("django_nextflow.models.parse_datetime")
-    @patch("django_nextflow.models.parse_duration")
-    def test_can_update_from_object(self, mock_dur, mock_date):
+    def test_can_update_from_object(self):
         mock_pe = Mock(
-            name="PROC (1)", process="PROC", hash="ab/123",
-            status="OK", stdout="out", stderr="err", start="123", duration="456"
+            name="PROC (1)", process="PROC", hash="ab/123", started=2000,
+            status="OK", stdout="out", stderr="err", start="123", duration=10
         )
-        mock_dur.return_value = 10
-        mock_date.return_value = 2000
         ex = mixer.blend(Execution)
         mock_pe.name = "PROC (1)"
         pe = mixer.blend(ProcessExecution, identifier="ab/123", execution=ex)
@@ -78,8 +68,6 @@ class ProcessExecutionCreationFromObject(TestCase):
         self.assertEqual(execution.started, 2000)
         self.assertEqual(execution.duration, 10)
         self.assertEqual(execution.execution, ex)
-        mock_dur.assert_called_with("456")
-        mock_date.assert_called_with("123")
         self.assertEqual(ProcessExecution.objects.count(), 1)
 
 

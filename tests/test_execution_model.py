@@ -76,14 +76,10 @@ class DirectoryPreparationTests(TestCase):
 
 class CreationFromObjectTests(TestCase):
 
-    @patch("django_nextflow.models.parse_datetime")
-    @patch("django_nextflow.models.parse_duration")
-    def test_can_create_from_object(self, mock_dur, mock_dt):
-        mock_dt.return_value = 2021
-        mock_dur.return_value = 10
+    def test_can_create_from_object(self):
         execution = Mock(
-            id="x_y", status="OK", command="nextflow run", datetime="now",
-            stdout="out", stderr="err", returncode=0, duration="1s"
+            id="x_y", status="OK", command="nextflow run", started=2021,
+            stdout="out", stderr="err", returncode=0, duration=10
         )
         pipeline = mixer.blend(Pipeline)
         execution = Execution.create_from_object(
@@ -102,18 +98,12 @@ class CreationFromObjectTests(TestCase):
         self.assertEqual(execution.started, 2021)
         self.assertEqual(execution.duration, 10)
         self.assertEqual(execution.pipeline, pipeline)
-        mock_dur.assert_called_with("1s")
-        mock_dt.assert_called_with("now")
     
 
-    @patch("django_nextflow.models.parse_datetime")
-    @patch("django_nextflow.models.parse_duration")
-    def test_can_update_from_object(self, mock_dur, mock_dt):
-        mock_dt.return_value = 2021
-        mock_dur.return_value = 10
+    def test_can_update_from_object(self):
         execution = Mock(
-            id="x_y", status="OK", command="nextflow run", datetime="now",
-            stdout="out", stderr="err", returncode=0, duration="1s"
+            id="x_y", status="OK", command="nextflow run", started=2021,
+            stdout="out", stderr="err", returncode=0, duration=10
         )
         pipeline = mixer.blend(Pipeline)
         ex = mixer.blend(Execution, id=1234, pipeline=pipeline)
@@ -129,8 +119,6 @@ class CreationFromObjectTests(TestCase):
         self.assertEqual(execution.started, 2021)
         self.assertEqual(execution.duration, 10)
         self.assertEqual(execution.pipeline, pipeline)
-        mock_dur.assert_called_with("1s")
-        mock_dt.assert_called_with("now")
         self.assertEqual(Execution.objects.count(), 1)
 
 

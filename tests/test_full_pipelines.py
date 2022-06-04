@@ -155,7 +155,7 @@ class PdbToMmcifTests(PipelineTest):
         self.assertEqual(process_execution.name, "PDB_TO_MMCIF")
         self.assertEqual(process_execution.process_name, "PDB_TO_MMCIF")
         self.assertEqual(process_execution.status, "COMPLETED")
-        self.assertEqual(process_execution.stdout, "-")
+        self.assertEqual(process_execution.stdout, "")
         self.assertEqual(len(process_execution.identifier), 9)
         self.assertLess(abs(process_execution.started - start), 10)
         self.assertLess(
@@ -297,7 +297,7 @@ class PdbToMmcifTests(PipelineTest):
         self.assertEqual(process_execution.name, "PDB_TO_MMCIF")
         self.assertEqual(process_execution.process_name, "PDB_TO_MMCIF")
         self.assertEqual(process_execution.status, "FAILED")
-        self.assertEqual(process_execution.stdout, "-")
+        self.assertEqual(process_execution.stdout, "")
         self.assertIn("Traceback (most recent call last):", process_execution.stderr)
         self.assertEqual(len(process_execution.identifier), 9)
         self.assertEqual(process_execution.downstream_data.count(), 0)
