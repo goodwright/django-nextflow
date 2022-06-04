@@ -149,7 +149,7 @@ execution.
 
 *4th June, 2022*
 
-- Added compatability with nextflow.py v0.3
+- Added compatability with nextflow.py v0.3.
 
 ### 0.12
 
