@@ -10,7 +10,7 @@ results in a database within a Django web app.
 
 ## Installation
 
-nextflow.py is available through PyPI:
+django-nextflow is available through PyPI:
 
 ```bash
 pip install django-nextflow
