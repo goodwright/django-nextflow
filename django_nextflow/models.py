@@ -200,11 +200,35 @@ class Pipeline(RandomIDModel):
 
 
 
+class ExecutionQuerySet(models.query.QuerySet):
+
+    def waiting(self, stuck=None):
+        """Filters queryset by those which are have not yet started. You can
+        choose to filter by whether or not they have been waiting too long."""
+
+        waiting = self.filter(started=None)
+        if stuck is None: return waiting
+        cutoff = time.time() - getattr(settings, "NEXTFLOW_QUEUE_CUTOFF", 172800)
+        if stuck:
+            return waiting.filter(created__lte=cutoff)
+        else:
+            return waiting.filter(created__gt=cutoff)
+
+
+
+class ExecutionManager(models.Manager):
+    
+    _queryset_class = ExecutionQuerySet
+
+
+
 class Execution(RandomIDModel):
     """A record of the running of some Nextflow file."""
 
     class Meta:
         ordering = ["started"]
+    
+    objects = ExecutionManager()
 
     identifier = models.CharField(max_length=100)
     params = models.TextField(default="{}")

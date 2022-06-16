@@ -154,3 +154,30 @@ class ExecutionGraphTests(TestCase):
         graph = execution.to_graph()
         mock_graph.assert_called_with(execution)
         self.assertIs(graph, mock_graph.return_value)
+
+
+
+class WaitingQuerysetTests(TestCase):
+
+    def setUp(self):
+        now = time.time()
+        self.ex1 = mixer.blend(Execution, started=None, created=now - 1000000)
+        self.ex2 = mixer.blend(Execution, started=None, created=now - 200000)
+        self.ex3 = mixer.blend(Execution, started=None, created=now - 150000)
+        self.ex4 = mixer.blend(Execution, started=None, created=now)
+        self.ex5 = mixer.blend(Execution, started=100)
+
+
+    def test_can_get_waiting_executions(self):
+        waiting = Execution.objects.all().waiting()
+        self.assertEqual(set(waiting), {self.ex1, self.ex2, self.ex3, self.ex4})
+    
+
+    def test_can_get_healthy_waiting_executions(self):
+        waiting = Execution.objects.all().waiting(stuck=False)
+        self.assertEqual(set(waiting), { self.ex3, self.ex4})
+    
+
+    def test_can_get_stuck_waiting_executions(self):
+        waiting = Execution.objects.all().waiting(stuck=True)
+        self.assertEqual(set(waiting), {self.ex1, self.ex2})
