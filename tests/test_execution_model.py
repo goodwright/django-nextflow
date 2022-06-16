@@ -1,4 +1,5 @@
 import os
+import time
 from unittest.mock import mock_open, patch, Mock
 from mixer.backend.django import mixer
 from django.test import TestCase
@@ -22,6 +23,7 @@ class ExecutionCreationTests(TestCase):
         self.assertEqual(execution.execution_params, "{}")
         self.assertEqual(list(execution.process_executions.all()), [])
         self.assertEqual(list(execution.upstream_data.all()), [])
+        self.assertLessEqual(abs(execution.created - time.time()), 1)
     
 
     def test_execution_order(self):
@@ -29,6 +31,7 @@ class ExecutionCreationTests(TestCase):
         e2 = mixer.blend(Execution, started=None)
         e3 = mixer.blend(Execution, started=100)
         self.assertEqual(list(Execution.objects.all()), [e2, e3, e1])
+
 
 
 class ExecutionFinishedTests(TestCase):

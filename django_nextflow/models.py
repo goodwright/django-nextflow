@@ -215,6 +215,7 @@ class Execution(RandomIDModel):
     exit_code = models.IntegerField(null=True)
     status = models.CharField(max_length=20)
     command = models.TextField()
+    created = models.FloatField(default=time.time)
     started = models.FloatField(null=True)
     duration = models.FloatField(null=True)
     label = models.CharField(max_length=80, default="", blank=True)
