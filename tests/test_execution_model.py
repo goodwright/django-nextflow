@@ -4,7 +4,7 @@ from unittest.mock import mock_open, patch, Mock
 from mixer.backend.django import mixer
 from django.test import TestCase
 from django.test.utils import override_settings
-from django_nextflow.models import Execution, Pipeline
+from django_nextflow.models import Execution, Pipeline, ProcessExecution
 
 class ExecutionCreationTests(TestCase):
 
@@ -181,3 +181,47 @@ class WaitingQuerysetTests(TestCase):
     def test_can_get_stuck_waiting_executions(self):
         waiting = Execution.objects.all().waiting(stuck=True)
         self.assertEqual(set(waiting), {self.ex1, self.ex2})
+
+
+
+class RunningQuerysetTests(TestCase):
+
+    def setUp(self):
+        now = time.time()
+        self.ex1 = mixer.blend(Execution, identifier=1, started=None)
+
+        # Started long time ago, has no process executions
+        self.ex2 = mixer.blend(Execution, identifier=2, started=200, status="")
+
+        # Started long time ago, has recent process executions
+        self.ex3 = mixer.blend(Execution, identifier=3, started=300, status="")
+        mixer.blend(ProcessExecution, started=300, execution=self.ex3)
+        mixer.blend(ProcessExecution, started=now-100, execution=self.ex3)
+
+        # No process executions started recently
+        self.ex4 = mixer.blend(Execution, identifier=4, started=400, status="")
+        mixer.blend(ProcessExecution, started=now-1000000000, execution=self.ex4)
+        mixer.blend(ProcessExecution, started=now-1200000000, execution=self.ex4)
+
+        # Recent execution
+        self.ex5 = mixer.blend(Execution, identifier=5, started=now-2000, status="")
+        mixer.blend(ProcessExecution, started=now-1500, execution=self.ex5)
+
+        # Finished
+        self.ex6 = mixer.blend(Execution, identifier=6, started=500, status="COMPLETED")
+        self.ex7 = mixer.blend(Execution, identifier=7, started=600, status="ERROR")
+    
+
+    def test_can_get_running_executions(self):
+        running = Execution.objects.all().running()
+        self.assertEqual(set(running), {self.ex2, self.ex3, self.ex4, self.ex5})
+    
+
+    def test_can_get_healthy_running_executions(self):
+        running = Execution.objects.all().running(stuck=False)
+        self.assertEqual(set(running), {self.ex3, self.ex5})
+    
+
+    def test_can_get_stuck_running_executions(self):
+        running = Execution.objects.all().running(stuck=True)
+        self.assertEqual(set(running), {self.ex2, self.ex4})

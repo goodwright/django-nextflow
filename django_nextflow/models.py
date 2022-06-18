@@ -5,6 +5,7 @@ import json
 import shutil
 import nextflow
 from django.db import models
+from django.db.models import Q, Max
 from django.conf import settings
 from django.dispatch import receiver
 from django.db.models.signals import post_delete
@@ -213,6 +214,26 @@ class ExecutionQuerySet(models.query.QuerySet):
             return waiting.filter(created__lte=cutoff)
         else:
             return waiting.filter(created__gt=cutoff)
+    
+
+    def running(self, stuck=None):
+        """Filters queryset by those which are have started but not finished.
+        You can choose to filter by whether or not they have been waiting too
+        long."""
+
+        running = self.exclude(started=None).filter(status="")
+        if stuck is None: return running
+        cutoff = time.time() - getattr(settings, "NEXTFLOW_RUN_CUTOFF", 172800)
+        if stuck:
+            return running.annotate(max_date=Max("process_executions__started")).filter(
+                (Q(started__lte=cutoff) & Q(process_executions=None)) |
+                Q(max_date__lte=cutoff)
+            )
+        else:
+            return running.annotate(max_date=Max("process_executions__started")).filter(
+                (Q(started__gt=cutoff) & Q(process_executions=None)) |
+                Q(max_date__gt=cutoff)
+            )
 
 
 
